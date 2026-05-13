@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, Edit3, Mic, Play, Save, X } from "lucide-react";
 import { LabelPill, Pill, PriorityBadge, StatusBadge, TaskLabelList } from "./ui";
 import { formatDateTime, formatDuration } from "@/lib/format";
+import { apiPath } from "@/lib/api-path";
 import type { RecordItem, TaskItem, TaskStatus } from "@/lib/types";
 import { labelsByType } from "@/lib/labels";
 
@@ -19,7 +20,7 @@ export function TaskDetailClient({ initialRecord, initialTask }: { initialRecord
   const planItems = useMemo(() => task.steps.filter(Boolean), [task.steps]);
 
   async function patchTask(patch: Partial<TaskItem>) {
-    const response = await fetch(`/api/tasks/${task.id}`, {
+    const response = await fetch(apiPath(`/api/tasks/${task.id}`), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch)

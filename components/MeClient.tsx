@@ -3,20 +3,42 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  Bell,
   CalendarDays,
   Check,
+  CheckSquare,
   ChevronRight,
   Download,
+  HelpCircle,
+  LogOut,
+  Mic,
+  Shield,
   SlidersHorizontal,
+  Star,
   Trash2,
-  UserRound,
-  X
+  TrendingUp,
+  X,
+  type LucideIcon
 } from "lucide-react";
 import { SheepIcon } from "./SheepIcon";
+import { apiPath } from "@/lib/api-path";
 import type { RecordItem } from "@/lib/types";
 
-type Sheet = "none" | "model" | "export" | "calendar" | "privacy" | "clear-confirm";
+type Sheet =
+  | "none"
+  | "model"
+  | "export"
+  | "calendar"
+  | "privacy"
+  | "clear-confirm"
+  | "notify"
+  | "quality"
+  | "pro"
+  | "help"
+  | "rating"
+  | "logout";
 type ModelOption = "Mock 模型" | "GPT 风格" | "更强分析模式";
+type QualityOption = "标准" | "高品质" | "省流";
 
 const modelOptions: Array<{ label: ModelOption; desc: string }> = [
   { label: "Mock 模型", desc: "当前使用本地 mock 输出，适合 MVP 演示。" },
@@ -30,6 +52,10 @@ export function MeClient({ initialRecords }: { initialRecords: RecordItem[] }) {
   const [sheet, setSheet] = useState<Sheet>("none");
   const [model, setModel] = useState<ModelOption>("Mock 模型");
   const [draftModel, setDraftModel] = useState<ModelOption>("Mock 模型");
+  const [quality, setQuality] = useState<QualityOption>("高品质");
+  const [draftQuality, setDraftQuality] = useState<QualityOption>("高品质");
+  const [notificationEnabled, setNotificationEnabled] = useState(true);
+  const [smartReminderEnabled, setSmartReminderEnabled] = useState(true);
   const [toast, setToast] = useState("");
   const [showStorageNote, setShowStorageNote] = useState(false);
 
@@ -37,12 +63,21 @@ export function MeClient({ initialRecords }: { initialRecords: RecordItem[] }) {
   const done = tasks.filter((task) => task.status === "done").length;
   const totalMinutes = Math.round(records.reduce((sum, record) => sum + (record.audioDuration ?? 0), 0) / 60);
   const usagePercent = Math.min(100, Math.round((totalMinutes / 100) * 100));
+  const completedRate = tasks.length ? Math.round((done / tasks.length) * 100) : 0;
+  const activeDays = records.length
+    ? Math.max(1, Math.ceil((Date.now() - new Date(records[records.length - 1].createdAt).getTime()) / 86400000))
+    : 1;
 
   useEffect(() => {
     const saved = window.localStorage.getItem("heard-sheep-model") as ModelOption | null;
     if (saved && modelOptions.some((item) => item.label === saved)) {
       setModel(saved);
       setDraftModel(saved);
+    }
+    const savedQuality = window.localStorage.getItem("heard-sheep-quality") as QualityOption | null;
+    if (savedQuality && ["标准", "高品质", "省流"].includes(savedQuality)) {
+      setQuality(savedQuality);
+      setDraftQuality(savedQuality);
     }
   }, []);
 
@@ -63,6 +98,18 @@ export function MeClient({ initialRecords }: { initialRecords: RecordItem[] }) {
     showToast("模型设置已更新");
   }
 
+  function openQualitySheet() {
+    setDraftQuality(quality);
+    setSheet("quality");
+  }
+
+  function saveQuality() {
+    setQuality(draftQuality);
+    window.localStorage.setItem("heard-sheep-quality", draftQuality);
+    setSheet("none");
+    showToast("录音质量已更新");
+  }
+
   function exportData(type: "markdown" | "json") {
     if (type === "json") {
       downloadFile("heard-sheep-records.json", JSON.stringify(records, null, 2), "application/json");
@@ -75,7 +122,7 @@ export function MeClient({ initialRecords }: { initialRecords: RecordItem[] }) {
   }
 
   async function clearAllData() {
-    const response = await fetch("/api/records", { method: "DELETE" });
+    const response = await fetch(apiPath("/api/records"), { method: "DELETE" });
     if (!response.ok) {
       showToast("清空失败，请稍后重试");
       return;
@@ -94,14 +141,18 @@ export function MeClient({ initialRecords }: { initialRecords: RecordItem[] }) {
           <div className="relative mb-3 drop-shadow-[0_8px_18px_rgba(124,111,247,0.15)]">
             <SheepIcon variant="front" className="h-24 w-24" />
           </div>
-          <div className="text-lg font-bold text-ink">Jamie</div>
-          <div className="mt-1 text-[13px] text-muted">职场口头任务捕手</div>
+          <div className="text-lg font-bold text-ink">职场小羊</div>
+          <div className="mt-1 text-[13px] text-muted">已使用 听到了咩 {activeDays} 天</div>
+          <div className="mt-3 inline-flex h-7 items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-[#F59E0B] to-[#D97706] px-3.5 text-xs font-bold text-white shadow-btn">
+            <Star size={12} fill="currentColor" />
+            Pro 会员 · MVP 占位
+          </div>
         </section>
 
         <section className="mb-5 grid grid-cols-3 overflow-hidden rounded-2xl bg-white shadow-card">
-          <Stat value={records.length} label="总录音数" onClick={() => router.push("/history?filter=recordings")} />
-          <Stat value={tasks.length} label="总待办数" onClick={() => router.push("/tasks?filter=all")} />
-          <Stat value={done} label="已完成" onClick={() => router.push("/tasks?filter=done")} />
+          <Stat value={records.length} label="录音次数" icon={Mic} onClick={() => router.push("/history?filter=recordings")} />
+          <Stat value={tasks.length} label="全部任务" icon={CheckSquare} onClick={() => router.push("/tasks?filter=all")} />
+          <Stat value={done} label="已完成" icon={TrendingUp} onClick={() => router.push("/tasks?filter=done")} />
         </section>
 
         <section className="mb-5 rounded-2xl bg-white p-4 shadow-card">
@@ -113,17 +164,28 @@ export function MeClient({ initialRecords }: { initialRecords: RecordItem[] }) {
             <div className="h-full rounded-full bg-brand transition-all" style={{ width: `${usagePercent}%` }} />
           </div>
           <div className="mt-2 text-[11px] leading-5 text-muted">
-            参照原型保留用量进度，真实套餐与额度仍为 MVP 占位。
+            参照原型保留用量进度，当前任务完成率 {completedRate}%。
           </div>
         </section>
 
-        <section className="overflow-hidden rounded-2xl bg-white shadow-card">
-          <GroupTitle title="设置" />
+        <SettingGroup title="偏好设置">
+          <Setting icon={Bell} title="通知提醒" value={notificationEnabled ? "已开启" : "已关闭"} onClick={() => setSheet("notify")} />
+          <Setting icon={Mic} title="录音质量" value={quality} onClick={openQualitySheet} />
           <Setting icon={SlidersHorizontal} title="AI 模型设置" value={model} onClick={openModelSheet} />
+        </SettingGroup>
+
+        <SettingGroup title="数据与联动">
           <Setting icon={Download} title="导出数据" value="Markdown / JSON" onClick={() => setSheet("export")} />
           <Setting icon={CalendarDays} title="接入日历" value="待接入" onClick={() => setSheet("calendar")} />
-          <Setting icon={UserRound} title="账号与隐私" value="本地 MVP" onClick={() => setSheet("privacy")} />
-        </section>
+        </SettingGroup>
+
+        <SettingGroup title="账号与帮助">
+          <Setting icon={Shield} title="账号与隐私" value="本地 MVP" onClick={() => setSheet("privacy")} />
+          <Setting icon={Star} title="会员升级" value="解锁更多能力" onClick={() => setSheet("pro")} />
+          <Setting icon={HelpCircle} title="使用帮助" value="" onClick={() => setSheet("help")} />
+          <Setting icon={Star} title="给我们评分" value="" onClick={() => setSheet("rating")} />
+          <Setting icon={LogOut} title="退出登录" value="MVP 模拟" onClick={() => setSheet("logout")} />
+        </SettingGroup>
       </main>
 
       {toast && (
@@ -199,6 +261,56 @@ export function MeClient({ initialRecords }: { initialRecords: RecordItem[] }) {
               </SheetBody>
             )}
 
+            {sheet === "notify" && (
+              <SheetBody title="通知提醒" onClose={() => setSheet("none")}>
+                <div className="space-y-2">
+                  <ToggleRow
+                    title="任务截止提醒"
+                    desc="在待办临近截止时提醒你确认进度"
+                    checked={notificationEnabled}
+                    onClick={() => setNotificationEnabled((value) => !value)}
+                  />
+                  <ToggleRow
+                    title="智能确认提醒"
+                    desc="有缺失信息或需确认事项时提示复核"
+                    checked={smartReminderEnabled}
+                    onClick={() => setSmartReminderEnabled((value) => !value)}
+                  />
+                </div>
+                <button
+                  onClick={() => {
+                    setSheet("none");
+                    showToast("提醒设置已更新");
+                  }}
+                  className="mt-4 w-full rounded-xl bg-brand px-4 py-3 text-sm font-bold text-white shadow-btn transition active:scale-[0.99]"
+                >
+                  完成
+                </button>
+              </SheetBody>
+            )}
+
+            {sheet === "quality" && (
+              <SheetBody title="录音质量" onClose={() => setSheet("none")}>
+                <div className="grid grid-cols-3 gap-2">
+                  {(["省流", "标准", "高品质"] as const).map((item) => (
+                    <button
+                      key={item}
+                      onClick={() => setDraftQuality(item)}
+                      className={`inline-flex h-11 items-center justify-center rounded-xl px-3 text-sm font-bold transition active:scale-[0.98] ${
+                        draftQuality === item ? "bg-brand text-white shadow-btn" : "bg-surface-2 text-ink-2"
+                      }`}
+                    >
+                      {item}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-3 text-xs leading-5 text-muted">
+                  当前仍使用浏览器 MediaRecorder，质量选项先作为原型交互保留，后续接真实录音参数。
+                </p>
+                <SheetActions primary="保存" onPrimary={saveQuality} secondary="取消" onSecondary={() => setSheet("none")} />
+              </SheetBody>
+            )}
+
             {sheet === "privacy" && (
               <SheetBody title="账号与隐私" onClose={() => setSheet("none")}>
                 <div className="space-y-2">
@@ -246,6 +358,71 @@ export function MeClient({ initialRecords }: { initialRecords: RecordItem[] }) {
                 </div>
               </SheetBody>
             )}
+
+            {sheet === "pro" && (
+              <SheetBody title="会员升级" onClose={() => setSheet("none")}>
+                <div className="rounded-2xl border border-brand-light bg-brand-light/50 p-4 text-[13px] leading-6">
+                  <div className="font-bold text-ink">Pro 会员能力仍是 MVP 占位</div>
+                  <p className="mt-1 text-muted">后续可以开放更长录音、批量导出、日历联动和更强模型分析。</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setSheet("none");
+                    showToast("已记录升级意向");
+                  }}
+                  className="mt-4 w-full rounded-xl bg-brand px-4 py-3 text-sm font-bold text-white shadow-btn transition active:scale-[0.99]"
+                >
+                  预约 Pro
+                </button>
+              </SheetBody>
+            )}
+
+            {sheet === "help" && (
+              <SheetBody title="使用帮助" onClose={() => setSheet("none")}>
+                <div className="space-y-2">
+                  <HelpItem title="1. 先录音" desc="把领导、会议或同事的口头交代录下来。" />
+                  <HelpItem title="2. 确认转写" desc="检查文字是否准确，必要时手动修正。" />
+                  <HelpItem title="3. 生成任务" desc="AI 会拆出待办、执行步骤、缺失信息和确认问题。" />
+                  <HelpItem title="4. 回到任务页" desc="按状态筛选待处理、需确认和已完成事项。" />
+                </div>
+              </SheetBody>
+            )}
+
+            {sheet === "rating" && (
+              <SheetBody title="给我们评分" onClose={() => setSheet("none")}>
+                <div className="rounded-2xl border border-line bg-white p-4 text-center shadow-card">
+                  <div className="mb-2 text-2xl">★★★★★</div>
+                  <p className="text-sm font-bold text-ink">你觉得这只小羊有帮上忙吗？</p>
+                  <p className="mt-1 text-xs leading-5 text-muted">评分入口先做本地反馈，正式版会接入真实反馈系统。</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setSheet("none");
+                    showToast("谢谢你的反馈");
+                  }}
+                  className="mt-4 w-full rounded-xl bg-brand px-4 py-3 text-sm font-bold text-white shadow-btn transition active:scale-[0.99]"
+                >
+                  提交评分
+                </button>
+              </SheetBody>
+            )}
+
+            {sheet === "logout" && (
+              <SheetBody title="退出登录" onClose={() => setSheet("none")}>
+                <div className="rounded-2xl border border-line bg-white p-4 text-[13px] leading-6 shadow-card">
+                  当前是本地 MVP 模式，暂无真实账号会话。点击确认只会给出演示反馈，不会删除本地数据。
+                </div>
+                <SheetActions
+                  primary="确认退出"
+                  onPrimary={() => {
+                    setSheet("none");
+                    showToast("已退出演示账号");
+                  }}
+                  secondary="取消"
+                  onSecondary={() => setSheet("none")}
+                />
+              </SheetBody>
+            )}
           </div>
         </div>
       )}
@@ -253,16 +430,28 @@ export function MeClient({ initialRecords }: { initialRecords: RecordItem[] }) {
   );
 }
 
-function Stat({ value, label, onClick }: { value: number; label: string; onClick: () => void }) {
+function Stat({ value, label, icon: Icon, onClick }: { value: number; label: string; icon: LucideIcon; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
         className="group relative border-r border-line py-4 text-center transition hover:bg-brand-light/40 active:bg-brand-light/60 last:border-r-0"
     >
         <span className="absolute right-2 top-2 text-[10px] font-black text-line transition group-hover:text-brand">↗</span>
-        <span className="block text-2xl font-bold text-ink">{value}</span>
+        <span className="mb-1 flex items-center justify-center gap-1.5">
+          <Icon size={15} className="text-brand" />
+          <span className="text-2xl font-bold text-ink">{value}</span>
+        </span>
         <span className="mt-0.5 block text-[10px] font-semibold uppercase tracking-[0.5px] text-muted">{label}</span>
     </button>
+  );
+}
+
+function SettingGroup({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="mb-5 overflow-hidden rounded-2xl bg-white shadow-card">
+      <GroupTitle title={title} />
+      {children}
+    </section>
   );
 }
 
@@ -280,7 +469,7 @@ function Setting({
   value,
   onClick
 }: {
-  icon: typeof SlidersHorizontal;
+  icon: LucideIcon;
   title: string;
   value: string;
   onClick: () => void;
@@ -344,7 +533,7 @@ function ActionRow({
   desc,
   onClick
 }: {
-  icon: typeof Download;
+  icon: LucideIcon;
   title: string;
   desc: string;
   onClick: () => void;
@@ -359,6 +548,39 @@ function ActionRow({
         <span className="mt-1 block text-xs text-muted">{desc}</span>
       </span>
     </button>
+  );
+}
+
+function ToggleRow({
+  title,
+  desc,
+  checked,
+  onClick
+}: {
+  title: string;
+  desc: string;
+  checked: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button onClick={onClick} className="flex w-full items-center gap-3 rounded-2xl border border-line bg-white p-3 text-left shadow-card transition active:bg-surface-2">
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-bold">{title}</span>
+        <span className="mt-1 block text-xs leading-5 text-muted">{desc}</span>
+      </span>
+      <span className={`relative h-6 w-11 rounded-full transition ${checked ? "bg-brand" : "bg-surface-2"}`}>
+        <span className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow transition ${checked ? "left-6" : "left-1"}`} />
+      </span>
+    </button>
+  );
+}
+
+function HelpItem({ title, desc }: { title: string; desc: string }) {
+  return (
+    <div className="rounded-2xl border border-line bg-white p-3 shadow-card">
+      <div className="text-sm font-bold text-ink">{title}</div>
+      <p className="mt-1 text-xs leading-5 text-muted">{desc}</p>
+    </div>
   );
 }
 

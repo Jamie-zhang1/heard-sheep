@@ -19,6 +19,7 @@ import { SheepIcon } from "./SheepIcon";
 import { EmptyState, RecordRow, SectionTitle } from "./ui";
 import { formatBytes, formatDuration } from "@/lib/format";
 import { createSpeechRecognition, isBrowserAsrAvailable } from "@/lib/asr";
+import { apiPath } from "@/lib/api-path";
 import type { AnalyzeResult, Mark, RecordItem, SourceType } from "@/lib/types";
 
 type Overlay =
@@ -272,7 +273,7 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
     if (duration) formData.append("duration", String(duration));
 
     try {
-      const response = await fetch("/api/transcribe", {
+      const response = await fetch(apiPath("/api/transcribe"), {
         method: "POST",
         body: formData
       });
@@ -397,7 +398,7 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
     setOverlay("analyzing");
     setLastError("");
     try {
-      const analysisResponse = await fetch("/api/analyze", {
+      const analysisResponse = await fetch(apiPath("/api/analyze"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -408,7 +409,7 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
       });
       if (!analysisResponse.ok) throw new Error("analyze failed");
       const analysis = (await analysisResponse.json()) as AnalyzeResult;
-      const saveResponse = await fetch("/api/records", {
+      const saveResponse = await fetch(apiPath("/api/records"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -439,14 +440,14 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
     setOverlay("analyzing");
     setLastError("");
     try {
-      const analysisResponse = await fetch("/api/analyze", {
+      const analysisResponse = await fetch(apiPath("/api/analyze"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ raw_text: text.trim(), source: draft.source })
       });
       if (!analysisResponse.ok) throw new Error("analyze failed");
       const analysis = (await analysisResponse.json()) as AnalyzeResult;
-      const saveResponse = await fetch("/api/records", {
+      const saveResponse = await fetch(apiPath("/api/records"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -476,7 +477,7 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
 
   async function addManualTask() {
     if (!noTaskRecordId) return;
-    const response = await fetch("/api/tasks", {
+    const response = await fetch(apiPath("/api/tasks"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
