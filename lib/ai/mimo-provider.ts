@@ -30,7 +30,7 @@ export async function analyzeWithMimo(input: AnalyzeInput): Promise<AnalyzeProvi
     baseUrl,
     apiKey,
     model,
-    messages: buildAnalyzeMessages(input.rawText, input.source, input.imageBase64)
+    messages: buildAnalyzeMessages(input.rawText, input.source, input.images || (input.imageBase64 ? [input.imageBase64] : undefined))
   });
 
   const firstParsed = parseAndValidate(firstOutput);

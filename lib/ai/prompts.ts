@@ -51,30 +51,44 @@ const JSON_SCHEMA_EXAMPLE = JSON.stringify(
   2
 );
 
-export function buildAnalyzeMessages(rawText: string, source: SourceType, imageBase64?: string) {
+export function buildAnalyzeMessages(rawText: string, source: SourceType, images?: string[]) {
   const systemParts = [...SYSTEM_PROMPT_BASE];
-  if (imageBase64) {
-    systemParts.push("用户上传了一张图片（如聊天截图、会议截图等）。请先识别图片中的所有文字内容，然后基于识别出的文字进行任务分析。如果图片中有多个对话方，注意区分不同人的发言。");
+  if (images && images.length > 0) {
+    if (images.length === 1) {
+      systemParts.push("用户上传了一张图片（如聊天截图、会议截图等）。请先识别图片中的所有文字内容，然后基于识别出的文字进行任务分析。如果图片中有多个对话方，注意区分不同人的发言。");
+    } else {
+      systemParts.push(
+        `用户上传了 ${images.length} 张图片（如聊天截图、会议截图等）。请逐张识别每张图片中的文字内容，然后综合所有图片的信息进行任务分析。`,
+        "重要：多张图片之间可能有关联（如同一对话的不同部分、不同人的发言、跨群消息等），请特别注意：",
+        "1. 识别不同图片之间的内容关联和上下文衔接",
+        "2. 同一任务可能分散在多张图片中，需要合并理解",
+        "3. 如果图片之间有时间先后或逻辑依赖，请按顺序组织任务",
+        "4. 在 summary 中说明图片之间的关联关系"
+      );
+    }
   }
 
   const userContent: ContentPart[] = [];
 
-  // Add image if present
-  if (imageBase64) {
-    userContent.push({
-      type: "image_url",
-      image_url: { url: imageBase64 }
-    });
+  // Add images if present
+  if (images && images.length > 0) {
+    for (const img of images) {
+      userContent.push({
+        type: "image_url",
+        image_url: { url: img }
+      });
+    }
   }
 
   // Build text part
   const textParts = [
     `来源：${source}`,
+    images && images.length > 1 ? `共 ${images.length} 张图片` : "",
     "请严格按以下 JSON 结构输出：",
     JSON_SCHEMA_EXAMPLE,
     "原始转写文本：",
     rawText
-  ];
+  ].filter(Boolean);
   userContent.push({ type: "text", text: textParts.join("\n\n") });
 
   return [

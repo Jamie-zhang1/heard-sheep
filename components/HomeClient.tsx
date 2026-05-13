@@ -60,8 +60,8 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
   const [shortDuration, setShortDuration] = useState(0);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadError, setUploadError] = useState("");
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [imageError, setImageError] = useState("");
   const [pasteText, setPasteText] = useState("");
   const [pasteError, setPasteError] = useState("");
@@ -339,35 +339,59 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
     await analyzeAndSave(draft, text);
   }
 
-  function handleImageFile(file: File | null) {
+  function handleImageFiles(files: FileList | null) {
     setImageError("");
-    if (!file) {
-      setImageFile(null);
-      setImagePreview(null);
+    if (!files || files.length === 0) {
       return;
     }
     const allowed = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
-    if (!allowed.includes(file.type)) {
-      setImageError("仅支持 PNG / JPG / WebP 格式的图片。");
-      setImageFile(null);
-      setImagePreview(null);
-      return;
+    const newFiles: File[] = [];
+    const newPreviews: string[] = [];
+    let hasError = false;
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (!allowed.includes(file.type)) {
+        setImageError("仅支持 PNG / JPG / WebP 格式的图片。");
+        hasError = true;
+        break;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        setImageError("单张图片大小不能超过 10MB。");
+        hasError = true;
+        break;
+      }
+      if (imageFiles.length + newFiles.length >= 9) {
+        setImageError("最多同时上传 9 张图片。");
+        hasError = true;
+        break;
+      }
+      newFiles.push(file);
     }
-    if (file.size > 10 * 1024 * 1024) {
-      setImageError("图片大小不能超过 10MB。");
-      setImageFile(null);
-      setImagePreview(null);
-      return;
+
+    if (hasError) return;
+
+    // Generate previews
+    let loaded = 0;
+    for (const file of newFiles) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreviews((prev) => [...prev, e.target?.result as string]);
+        loaded++;
+      };
+      reader.readAsDataURL(file);
     }
-    setImageFile(file);
-    const reader = new FileReader();
-    reader.onload = (e) => setImagePreview(e.target?.result as string);
-    reader.readAsDataURL(file);
+    setImageFiles((prev) => [...prev, ...newFiles]);
+  }
+
+  function removeImageFile(index: number) {
+    setImageFiles((prev) => prev.filter((_, i) => i !== index));
+    setImagePreviews((prev) => prev.filter((_, i) => i !== index));
   }
 
   async function submitImage() {
-    if (!imageFile || !imagePreview) {
-      setImageError("请先选择一张图片。");
+    if (imageFiles.length === 0 || imagePreviews.length === 0) {
+      setImageError("请先选择图片。");
       return;
     }
     setOverlay("analyzing");
@@ -379,7 +403,7 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
         body: JSON.stringify({
           raw_text: "",
           source: "image",
-          image_base64: imagePreview
+          images: imagePreviews
         })
       });
       if (!analysisResponse.ok) throw new Error("analyze failed");
@@ -391,7 +415,7 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
           source: "image",
           rawText: "",
           transcriptText: "",
-          audioName: imageFile.name,
+          audioName: imageFiles.map((f) => f.name).join(", "),
           analysis
         })
       });
@@ -739,41 +763,52 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
         <FullOverlay>
           <PanelHeader title="识别图片" subtitle="上传聊天截图、会议截图等，AI 自动识别内容" onClose={() => setOverlay("none")} />
           <div className="px-6">
-            <label className="block cursor-pointer rounded-2xl border-2 border-dashed border-brand/40 bg-white px-5 py-10 text-center shadow-card transition hover:bg-brand-light/40 active:scale-[0.99] active:border-brand">
+            <label className="block cursor-pointer rounded-2xl border-2 border-dashed border-brand/40 bg-white px-5 py-8 text-center shadow-card transition hover:bg-brand-light/40 active:scale-[0.99] active:border-brand">
               <input
                 type="file"
                 accept=".png,.jpg,.jpeg,.webp,image/*"
+                multiple
                 className="hidden"
-                onChange={(event) => handleImageFile(event.target.files?.[0] ?? null)}
+                onChange={(event) => handleImageFiles(event.target.files)}
               />
               <Image className="mx-auto mb-2 text-neutral-400" size={42} />
               <p className="text-sm font-semibold text-muted">选择或拖拽图片</p>
-              <p className="mt-1 text-[11px] text-neutral-400">支持 PNG / JPG / WebP，最大 10MB</p>
+              <p className="mt-1 text-[11px] text-neutral-400">支持多选，最多 9 张，PNG / JPG / WebP</p>
             </label>
-            {imagePreview && (
-              <div className="mt-4 rounded-2xl border border-brand-light bg-brand-light/45 p-3">
-                <img
-                  src={imagePreview}
-                  alt="预览"
-                  className="max-h-[200px] w-full rounded-xl object-contain"
-                />
-                {imageFile && (
-                  <div className="mt-2 text-xs text-neutral-400">{imageFile.name}</div>
-                )}
+            {imagePreviews.length > 0 && (
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                {imagePreviews.map((preview, index) => (
+                  <div key={index} className="relative">
+                    <img
+                      src={preview}
+                      alt={`预览 ${index + 1}`}
+                      className="h-24 w-full rounded-xl object-cover"
+                    />
+                    <button
+                      onClick={() => removeImageFile(index)}
+                      className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white"
+                    >
+                      <X size={12} />
+                    </button>
+                    <div className="mt-1 truncate text-[10px] text-neutral-400">
+                      {imageFiles[index]?.name}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
             {imageError && <p className="mt-3 text-xs font-semibold text-ink">{imageError}</p>}
           </div>
           <div className="flex-1" />
           <div className="flex gap-2 px-6 pb-6">
-            <button onClick={() => { setOverlay("none"); setImageFile(null); setImagePreview(null); }} className="rounded-xl px-4 py-3 text-sm font-semibold text-muted transition active:bg-surface-2">
+            <button onClick={() => { setOverlay("none"); setImageFiles([]); setImagePreviews([]); }} className="rounded-xl px-4 py-3 text-sm font-semibold text-muted transition active:bg-surface-2">
               取消
             </button>
             <button
               onClick={submitImage}
               className="flex-1 rounded-xl bg-brand px-4 py-3 text-sm font-bold text-white shadow-btn transition active:scale-[0.99]"
             >
-              识别并生成任务
+              识别 {imageFiles.length > 0 ? `(${imageFiles.length} 张)` : ""}并生成任务
             </button>
           </div>
         </FullOverlay>

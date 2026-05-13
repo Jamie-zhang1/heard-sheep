@@ -6,6 +6,7 @@ export type AnalyzeInput = {
   rawText: string;
   source: SourceType;
   imageBase64?: string;
+  images?: string[];
 };
 
 export type AnalyzeProviderResult = {
