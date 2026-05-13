@@ -76,6 +76,19 @@ export function ResultView({ record }: { record: RecordItem }) {
       <main className="safe-scroll px-5 py-4">
         {tab === "text" && (
           <div className="space-y-2">
+            {record.marks && record.marks.length > 0 && (
+              <ResultBlock title={`录音标记（${record.marks.length} 个重点）`}>
+                <div className="space-y-1.5">
+                  {record.marks.map((mark) => (
+                    <div key={mark.id} className="flex items-center gap-2 text-[12px]">
+                      <span className="text-brand">📍</span>
+                      <span className="font-medium text-ink">{mark.label}</span>
+                      <span className="text-muted">{Math.floor(mark.time / 60)}:{String(mark.time % 60).padStart(2, "0")}</span>
+                    </div>
+                  ))}
+                </div>
+              </ResultBlock>
+            )}
             <ResultBlock title="核心摘要">
               <p className="text-sm leading-7">{record.summary}</p>
             </ResultBlock>

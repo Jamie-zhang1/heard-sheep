@@ -61,6 +61,7 @@ export async function createRecord(input: RecordCreateInput) {
     globalConfirmQuestions: input.analysis.global_confirm_questions,
     warnings: input.analysis.warnings,
     aiMeta: input.analysis.meta,
+    marks: input.marks,
     tasks: input.analysis.tasks.map((task, index) => ({
       id: `task_${randomUUID()}`,
       recordId,

@@ -18,7 +18,7 @@ import { SheepIcon } from "./SheepIcon";
 import { EmptyState, RecordRow, SectionTitle } from "./ui";
 import { formatBytes, formatDuration } from "@/lib/format";
 import { createSpeechRecognition, isBrowserAsrAvailable } from "@/lib/asr";
-import type { AnalyzeResult, RecordItem, SourceType } from "@/lib/types";
+import type { AnalyzeResult, Mark, RecordItem, SourceType } from "@/lib/types";
 
 type Overlay =
   | "none"
@@ -66,6 +66,7 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
   const [processStep, setProcessStep] = useState(0);
   const [lastError, setLastError] = useState("");
   const [noTaskRecordId, setNoTaskRecordId] = useState<string | null>(null);
+  const [marks, setMarks] = useState<Mark[]>([]);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
   const stoppingRef = useRef(false);
@@ -204,6 +205,22 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
     }
   }
 
+  function addMark() {
+    const time = secondsRef.current;
+    const label = `标记 ${marks.length + 1}`;
+    const newMark: Mark = {
+      id: `mark_${Date.now()}`,
+      time,
+      label,
+      createdAt: new Date().toISOString()
+    };
+    setMarks((prev) => [...prev, newMark]);
+  }
+
+  function removeMark(id: string) {
+    setMarks((prev) => prev.filter((m) => m.id !== id));
+  }
+
   function finishRecording() {
     if (!recorder) return;
     recorder.stop();
@@ -338,7 +355,8 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
           transcriptText: text.trim(),
           audioName: draft.audioName,
           audioDuration: draft.duration,
-          analysis
+          analysis,
+          marks: marks.length > 0 ? marks : undefined
         })
       });
       if (!saveResponse.ok) throw new Error("save failed");
@@ -494,13 +512,37 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
               </div>
             )}
             <div className="flex-1" />
-            <div className="flex items-center justify-center gap-6">
+            {marks.length > 0 && (
+              <div className="mb-4 max-h-32 overflow-y-auto rounded-2xl border border-white/10 bg-white/[0.05] p-3">
+                <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-white/50">
+                  已标记 {marks.length} 个重点
+                </div>
+                <div className="space-y-1.5">
+                  {marks.map((mark) => (
+                    <div key={mark.id} className="flex items-center justify-between text-[12px] text-white/70">
+                      <span>📍 {mark.label} · {formatTimer(mark.time)}</span>
+                      <button onClick={() => removeMark(mark.id)} className="text-white/40 hover:text-white/70">
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="flex items-center justify-center gap-4">
               <button
                 onClick={togglePause}
                 className="flex h-12 w-12 items-center justify-center rounded-full border border-white/25 text-white"
                 aria-label={recordingStatus === "recording" ? "暂停" : "继续"}
               >
                 {recordingStatus === "recording" ? <Pause size={18} /> : <Play size={18} />}
+              </button>
+              <button
+                onClick={addMark}
+                className="flex h-12 w-12 items-center justify-center rounded-full border border-white/25 text-white"
+                aria-label="标记重点"
+              >
+                📍
               </button>
               <button
                 onClick={finishRecording}

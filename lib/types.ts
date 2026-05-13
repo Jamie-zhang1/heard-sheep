@@ -100,6 +100,7 @@ export type RecordItem = {
   warnings: string[];
   aiMeta?: AnalyzeMeta;
   tasks: TaskItem[];
+  marks?: Mark[];
   createdAt: string;
   updatedAt: string;
 };
@@ -116,4 +117,12 @@ export type RecordCreateInput = {
   analysis: AnalyzeResult;
   audioName?: string;
   audioDuration?: number;
+  marks?: Mark[];
+};
+
+export type Mark = {
+  id: string;
+  time: number; // seconds from start
+  label?: string;
+  createdAt: string;
 };
