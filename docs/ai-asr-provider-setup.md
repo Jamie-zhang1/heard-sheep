@@ -1,13 +1,20 @@
 # 听到了咩 AI / ASR Provider 接入说明
 
-## 当前状态
+更新时间：2026-05-13  
+适用代码：当前 `heard-sheep` Next.js MVP
 
-- UI 主流程已完成：首页录音、上传音频、粘贴转写稿、转写确认、AI 分析、结果页、任务详情、任务编辑、历史记录。
-- `/api/analyze` 已支持真实 LLM Provider，当前首选 Xiaomi MiMo OpenAI-compatible API。
-- `/api/analyze` 在未配置 API Key 或真实调用失败时，可自动回退到 mock AI。
-- `/api/transcribe` 仍使用 mock ASR，但已改造成 provider 架构，后续接真实 ASR 不需要改前端流程。
+## 1. 当前状态
 
-## 配置 MiMo
+- `/api/analyze` 已经 provider 化。
+- 当前首选真实 LLM Provider：Xiaomi MiMo OpenAI-compatible Chat Completions。
+- 未配置 `MIMO_API_KEY` 或真实调用失败时，可自动回退到 mock AI。
+- AI 输出会经过 JSON 解析和 Zod schema 校验，不会无校验直接返回给页面。
+- `/api/transcribe` 已经 provider 化。
+- 服务端 ASR 当前仍是 mock。
+- 浏览器录音过程中会优先尝试 Web Speech API 实时识别；没有可用识别结果时走服务端 `/api/transcribe` mock fallback。
+- 当前项目默认 `basePath=/sheep`，客户端 API 请求应访问 `/sheep/api/...`。
+
+## 2. 环境变量
 
 复制 `.env.example` 为 `.env.local`：
 
@@ -15,89 +22,224 @@
 cp .env.example .env.local
 ```
 
-在 `.env.local` 中配置：
+推荐开发配置：
 
 ```env
+NEXT_PUBLIC_BASE_PATH=/sheep
+
 AI_PROVIDER=mimo
 AI_ALLOW_MOCK_FALLBACK=true
 
-MIMO_API_KEY=你的 MiMo API Key
+MIMO_API_KEY=
 MIMO_BASE_URL=https://api.xiaomimimo.com/v1
-MIMO_MODEL=你的 MiMo 模型名
-MIMO_TIMEOUT_MS=20000
+MIMO_MODEL=mimo-chat
+MIMO_TIMEOUT_MS=30000
 
 ASR_PROVIDER=mock
 ASR_ALLOW_MOCK_FALLBACK=true
 ```
 
-然后启动：
+说明：
 
-```bash
-npm run dev
+- `MIMO_API_KEY` 不要写入 `NEXT_PUBLIC_` 变量。
+- `MIMO_API_KEY` 只在服务端 API Route / Provider 中读取。
+- `.env.local` 已被 `.gitignore` 忽略，不应提交。
+- `NEXT_PUBLIC_BASE_PATH` 是公开变量，只用于 Next.js basePath 和客户端 API 路径拼接，不包含敏感信息。
+
+## 3. MiMo Provider
+
+相关文件：
+
+```text
+lib/ai/
+├─ provider.ts
+├─ mimo-provider.ts
+├─ mock-provider.ts
+├─ prompts.ts
+└─ schema.ts
 ```
 
-或生产预览：
+执行逻辑：
 
-```bash
-npm run build
-npm run start
+```text
+前端提交 raw_text / source / images
+→ /api/analyze
+→ lib/ai/provider.ts 选择 provider
+→ MiMo provider 调用 /chat/completions
+→ 提取 JSON
+→ Zod schema 校验
+→ 成功返回结构化 AnalyzeResult
 ```
 
-## `/api/analyze` 执行逻辑
+如果真实调用失败：
 
-1. 前端提交用户确认后的 `raw_text` 和 `source`。
-2. API Route 读取服务端环境变量，不向前端暴露 API Key。
-3. 如果 `AI_PROVIDER=mock` 或没有配置 `MIMO_API_KEY`，直接使用 mock provider。
-4. 如果配置了 MiMo，调用 `${MIMO_BASE_URL}/chat/completions`。
-5. 模型输出会先提取 JSON，再用 zod schema 校验。
-6. 如果 JSON 解析或 schema 校验失败，会再请求一次模型修复 JSON。
-7. 如果仍失败：
-   - `AI_ALLOW_MOCK_FALLBACK=true`：返回 mock 结果，并在 `meta.provider` 标记为 `mock_fallback`。
-   - `AI_ALLOW_MOCK_FALLBACK=false`：返回结构化错误。
+```text
+MiMo 请求失败 / JSON 解析失败 / Schema 校验失败
+→ 尝试一次 JSON 修复请求
+→ 仍失败
+→ 如果 AI_ALLOW_MOCK_FALLBACK=true，返回 mock_fallback
+→ 如果 AI_ALLOW_MOCK_FALLBACK=false，返回结构化错误
+```
 
-## 如何判断是否调用真实 AI
+## 4. `/api/analyze` 输入输出
 
-`/api/analyze` 返回结果里包含：
+请求：
 
-```ts
-meta: {
-  provider: "mimo" | "mock" | "mock_fallback"
-  model?: string
-  fallbackUsed: boolean
-  error?: string
+```json
+{
+  "raw_text": "用户确认后的转写文本",
+  "source": "recording",
+  "images": ["data:image/png;base64,..."]
 }
 ```
 
-同时服务端控制台会输出：
+`source` 可选值：
 
-- `[AI] Using mock provider`
+- `recording`
+- `upload`
+- `paste`
+- `image`
+
+响应核心结构：
+
+```ts
+type AnalyzeResult = {
+  title: string
+  summary: string
+  organized_text: {
+    cleaned_text: string
+    key_points: string[]
+    time_mentions: string[]
+    special_requirements: string[]
+  }
+  tasks: AnalyzeTask[]
+  global_confirm_questions: string[]
+  warnings: string[]
+  meta?: {
+    provider: "mimo" | "mock" | "mock_fallback"
+    model?: string
+    fallbackUsed: boolean
+    error?: string
+  }
+}
+```
+
+每条任务必须包含 `source_evidence`，并且模糊信息必须进入 `missing_info` 或 `confirm_questions`。
+
+## 5. 如何判断真实 AI 是否生效
+
+查看响应中的：
+
+```ts
+result.meta.provider
+result.meta.fallbackUsed
+result.meta.model
+```
+
+可能值：
+
+- `mimo`：真实 MiMo 调用成功。
+- `mock`：直接使用 mock，通常因为未配置 `MIMO_API_KEY` 或 `AI_PROVIDER=mock`。
+- `mock_fallback`：尝试真实 MiMo 失败后自动回退 mock。
+
+服务端日志会输出：
+
+- `[AI] Provider selection`
+- `[AI] Calling MiMo provider`
+- `[AI] MiMo provider succeeded`
 - `[AI] MiMo provider failed`
-- `[AI] Fallback result returned`
+- `[AI] Falling back to mock provider`
 
-在开发环境下，如果结果来自 mock 或 fallback，结果页会显示轻量调试标识：`Mock AI` 或 `Fallback`。
+开发环境下，结果页会在 mock 或 fallback 时显示轻量调试标识。
 
-## 安全说明
+## 6. ASR Provider
 
-- 不要提交 `.env.local`。
-- 不要使用 `NEXT_PUBLIC_` 前缀保存 API Key。
-- MiMo API Key 只在服务端 API Route / Provider 中读取。
-- `.env.example` 只放占位变量，不包含真实密钥。
-
-## ASR Provider
-
-当前目录：
+相关文件：
 
 ```text
 lib/asr/
 ├─ provider.ts
 ├─ mock-provider.ts
+├─ browser-provider.ts
 └─ index.ts
 ```
 
-当前只实现：
+当前实现：
 
-```env
-ASR_PROVIDER=mock
+- 浏览器端：`browser-provider.ts` 封装 Web Speech API，录音中可显示实时识别文本。
+- 服务端：`/api/transcribe` 通过 `lib/asr/index.ts` 调用 provider。
+- 服务端当前只有 mock provider。
+- `ASR_PROVIDER=browser` 不会让服务端直接使用浏览器 provider，服务端会提示并使用 mock。
+
+请求：
+
+```text
+POST /sheep/api/transcribe
+Content-Type: multipart/form-data
+
+audio: File
+source: recording | upload
+duration?: number
 ```
 
-后续接真实 ASR 时，只需要新增 provider 并在 `lib/asr/index.ts` 中选择即可，前端录音和上传流程不需要重构。
+响应：
+
+```ts
+type TranscribeResult = {
+  text: string
+  duration?: number
+  source: "recording" | "upload"
+  provider: string
+  fallbackUsed?: boolean
+}
+```
+
+## 7. 本地验证
+
+```bash
+npm run typecheck
+npm run build
+npm run start
+```
+
+页面：
+
+```text
+http://127.0.0.1:3000/sheep
+```
+
+API：
+
+```text
+POST http://127.0.0.1:3000/sheep/api/analyze
+POST http://127.0.0.1:3000/sheep/api/transcribe
+```
+
+## 8. 后续接真实 ASR 的建议
+
+新增 provider：
+
+```text
+lib/asr/your-provider.ts
+```
+
+实现：
+
+```ts
+type TranscribeInput = {
+  file?: File | Buffer
+  fileName?: string
+  source: "recording" | "upload"
+  duration?: number
+}
+
+type TranscribeResult = {
+  text: string
+  duration?: number
+  source: "recording" | "upload"
+  provider: string
+  fallbackUsed?: boolean
+}
+```
+
+然后在 `lib/asr/index.ts` 中根据 `ASR_PROVIDER` 选择即可，前端流程不需要重构。
