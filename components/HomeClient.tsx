@@ -588,17 +588,20 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
         <FullOverlay dark>
           <div className="flex min-h-0 flex-1 flex-col px-6 pb-10">
             <div className="py-4 text-center">
-              <div className="text-[11px] font-bold uppercase tracking-[2px] text-white/40">
-                {recordingStatus === "paused" ? "已暂停" : "录音中"}
+              <div className="flex items-center justify-center gap-2">
+                <span className={`status-dot ${recordingStatus === "recording" ? "status-dot-recording" : "status-dot-paused"}`} />
+                <div className="text-[11px] font-bold uppercase tracking-[2px] text-white/40">
+                  {recordingStatus === "paused" ? "已暂停" : "录音中"}
+                </div>
               </div>
-              <div className="mt-2 text-[56px] font-black tracking-[-3px] text-white">{formatTimer(seconds)}</div>
+              <div className="mt-2 text-[56px] font-black tracking-[-3px] text-white timer-display">{formatTimer(seconds)}</div>
             </div>
             <div className="flex h-24 items-center justify-center gap-1 text-white">
-              {Array.from({ length: 28 }).map((_, index) => (
+              {Array.from({ length: 32 }).map((_, index) => (
                 <span
                   key={index}
-                  className="wave-bar"
-                  style={{ animationDelay: `${(index % 7) * -0.12}s` }}
+                  className="wave-bar-enhanced"
+                  style={{ animationDelay: `${(index % 8) * -0.15}s` }}
                 />
               ))}
             </div>
@@ -971,6 +974,9 @@ function ProcessingOverlay({
         <SheepIcon variant="thinking" className="mb-6 h-28 w-28 processing-dot" />
         <div className="text-base font-bold">{title}</div>
         <div className="mb-6 mt-2 text-[13px] text-muted">{subtitle}</div>
+        <div className="mb-4 w-full max-w-[280px] overflow-hidden rounded-full bg-surface-2">
+          <div className="processing-bar" style={{ width: `${((activeStep + 1) / steps.length) * 100}%` }} />
+        </div>
         <div className="w-full max-w-[280px] space-y-2">
           {steps.map((step, index) => (
             <div

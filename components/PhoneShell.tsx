@@ -47,7 +47,10 @@ export function StatusBar() {
   return (
     <div className="relative z-10 flex h-[54px] shrink-0 items-center justify-between px-7 pt-4 text-[15px] font-bold">
       <span>9:41</span>
-      <span className="text-xs">5G 100%</span>
+      <div className="flex items-center gap-1">
+        <span className="text-xs">5G</span>
+        <span className="text-xs">100%</span>
+      </div>
     </div>
   );
 }
