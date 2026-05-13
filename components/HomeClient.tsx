@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   FileAudio,
   FileText,
+  Image,
   Mic,
   Pause,
   Play,
@@ -25,6 +26,7 @@ type Overlay =
   | "record"
   | "upload"
   | "paste"
+  | "image"
   | "transcribing"
   | "confirm"
   | "analyzing"
@@ -58,6 +60,9 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
   const [shortDuration, setShortDuration] = useState(0);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadError, setUploadError] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageError, setImageError] = useState("");
   const [pasteText, setPasteText] = useState("");
   const [pasteError, setPasteError] = useState("");
   const [allowShortPaste, setAllowShortPaste] = useState(false);
@@ -334,6 +339,77 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
     await analyzeAndSave(draft, text);
   }
 
+  function handleImageFile(file: File | null) {
+    setImageError("");
+    if (!file) {
+      setImageFile(null);
+      setImagePreview(null);
+      return;
+    }
+    const allowed = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
+    if (!allowed.includes(file.type)) {
+      setImageError("仅支持 PNG / JPG / WebP 格式的图片。");
+      setImageFile(null);
+      setImagePreview(null);
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setImageError("图片大小不能超过 10MB。");
+      setImageFile(null);
+      setImagePreview(null);
+      return;
+    }
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onload = (e) => setImagePreview(e.target?.result as string);
+    reader.readAsDataURL(file);
+  }
+
+  async function submitImage() {
+    if (!imageFile || !imagePreview) {
+      setImageError("请先选择一张图片。");
+      return;
+    }
+    setOverlay("analyzing");
+    setLastError("");
+    try {
+      const analysisResponse = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          raw_text: "",
+          source: "image",
+          image_base64: imagePreview
+        })
+      });
+      if (!analysisResponse.ok) throw new Error("analyze failed");
+      const analysis = (await analysisResponse.json()) as AnalyzeResult;
+      const saveResponse = await fetch("/api/records", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          source: "image",
+          rawText: "",
+          transcriptText: "",
+          audioName: imageFile.name,
+          analysis
+        })
+      });
+      if (!saveResponse.ok) throw new Error("save failed");
+      const { record } = (await saveResponse.json()) as { record: RecordItem };
+      if (analysis.tasks.length === 0) {
+        setNoTaskRecordId(record.id);
+        setOverlay("no-task");
+        router.refresh();
+        return;
+      }
+      router.push(`/result/${record.id}`);
+    } catch {
+      setLastError("图片识别失败，请稍后重试。");
+      setOverlay("ai-error");
+    }
+  }
+
   async function analyzeAndSave(draft = transcript, text = confirmedText) {
     if (!draft || !text.trim()) return;
     setOverlay("analyzing");
@@ -443,20 +519,27 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
           </div>
         </div>
 
-        <div className="mb-6 flex justify-center gap-3">
+        <div className="mb-6 grid grid-cols-3 justify-center gap-3">
           <button
             onClick={() => setOverlay("upload")}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl bg-white px-4 py-3 text-xs font-semibold text-ink-2 shadow-card active:scale-[0.99]"
+            className="flex flex-col items-center justify-center gap-1.5 rounded-2xl bg-white px-4 py-3 text-xs font-semibold text-ink-2 shadow-card active:scale-[0.99]"
           >
             <Upload size={16} />
             上传音频
           </button>
           <button
             onClick={() => setOverlay("paste")}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl bg-white px-4 py-3 text-xs font-semibold text-ink-2 shadow-card active:scale-[0.99]"
+            className="flex flex-col items-center justify-center gap-1.5 rounded-2xl bg-white px-4 py-3 text-xs font-semibold text-ink-2 shadow-card active:scale-[0.99]"
           >
             <FileText size={16} />
             粘贴转写稿
+          </button>
+          <button
+            onClick={() => setOverlay("image")}
+            className="flex flex-col items-center justify-center gap-1.5 rounded-2xl bg-white px-4 py-3 text-xs font-semibold text-ink-2 shadow-card active:scale-[0.99]"
+          >
+            <Image size={16} />
+            识别图片
           </button>
         </div>
 
@@ -647,6 +730,50 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
               className="flex-1 rounded-xl bg-brand px-4 py-3 text-sm font-bold text-white shadow-btn transition active:scale-[0.99]"
             >
               确认并生成任务
+            </button>
+          </div>
+        </FullOverlay>
+      )}
+
+      {overlay === "image" && (
+        <FullOverlay>
+          <PanelHeader title="识别图片" subtitle="上传聊天截图、会议截图等，AI 自动识别内容" onClose={() => setOverlay("none")} />
+          <div className="px-6">
+            <label className="block cursor-pointer rounded-2xl border-2 border-dashed border-brand/40 bg-white px-5 py-10 text-center shadow-card transition hover:bg-brand-light/40 active:scale-[0.99] active:border-brand">
+              <input
+                type="file"
+                accept=".png,.jpg,.jpeg,.webp,image/*"
+                className="hidden"
+                onChange={(event) => handleImageFile(event.target.files?.[0] ?? null)}
+              />
+              <Image className="mx-auto mb-2 text-neutral-400" size={42} />
+              <p className="text-sm font-semibold text-muted">选择或拖拽图片</p>
+              <p className="mt-1 text-[11px] text-neutral-400">支持 PNG / JPG / WebP，最大 10MB</p>
+            </label>
+            {imagePreview && (
+              <div className="mt-4 rounded-2xl border border-brand-light bg-brand-light/45 p-3">
+                <img
+                  src={imagePreview}
+                  alt="预览"
+                  className="max-h-[200px] w-full rounded-xl object-contain"
+                />
+                {imageFile && (
+                  <div className="mt-2 text-xs text-neutral-400">{imageFile.name}</div>
+                )}
+              </div>
+            )}
+            {imageError && <p className="mt-3 text-xs font-semibold text-ink">{imageError}</p>}
+          </div>
+          <div className="flex-1" />
+          <div className="flex gap-2 px-6 pb-6">
+            <button onClick={() => { setOverlay("none"); setImageFile(null); setImagePreview(null); }} className="rounded-xl px-4 py-3 text-sm font-semibold text-muted transition active:bg-surface-2">
+              取消
+            </button>
+            <button
+              onClick={submitImage}
+              className="flex-1 rounded-xl bg-brand px-4 py-3 text-sm font-bold text-white shadow-btn transition active:scale-[0.99]"
+            >
+              识别并生成任务
             </button>
           </div>
         </FullOverlay>

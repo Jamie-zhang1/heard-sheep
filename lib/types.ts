@@ -1,4 +1,4 @@
-export type SourceType = "recording" | "upload" | "paste";
+export type SourceType = "recording" | "upload" | "paste" | "image";
 export type Priority = "high" | "medium" | "low";
 export type Confidence = "high" | "medium" | "low";
 export type TaskStatus = "todo" | "doing" | "done";

@@ -9,14 +9,17 @@ export async function POST(request: Request) {
     const body = (await request.json()) as {
       raw_text?: string;
       source?: SourceType;
+      image_base64?: string;
     };
 
     const rawText = body.raw_text?.trim() ?? "";
     const source = body.source ?? "paste";
+    const imageBase64 = body.image_base64?.trim() || undefined;
 
-    if (!rawText) {
+    // For image source, rawText can be empty (AI will extract from image)
+    if (!rawText && !imageBase64) {
       return NextResponse.json(
-        { code: "EMPTY_TEXT", message: "请提供用户确认后的转写文本" },
+        { code: "EMPTY_TEXT", message: "请提供文本内容或上传图片" },
         { status: 400 }
       );
     }
@@ -35,7 +38,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const { result, meta } = await analyzeText({ rawText, source });
+    const { result, meta } = await analyzeText({
+      rawText: rawText || "（用户上传了图片，请从图片中识别文字内容）",
+      source,
+      imageBase64
+    });
     if (meta.fallbackUsed) {
       console.warn("[AI] Fallback result returned", meta);
     }

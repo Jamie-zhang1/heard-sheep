@@ -5,6 +5,7 @@ import { analyzeWithMock } from "./mock-provider";
 export type AnalyzeInput = {
   rawText: string;
   source: SourceType;
+  imageBase64?: string;
 };
 
 export type AnalyzeProviderResult = {

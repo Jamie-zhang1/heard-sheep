@@ -30,7 +30,7 @@ export async function analyzeWithMimo(input: AnalyzeInput): Promise<AnalyzeProvi
     baseUrl,
     apiKey,
     model,
-    messages: buildAnalyzeMessages(input.rawText, input.source)
+    messages: buildAnalyzeMessages(input.rawText, input.source, input.imageBase64)
   });
 
   const firstParsed = parseAndValidate(firstOutput);
@@ -95,6 +95,11 @@ function extractJson(output: string) {
   return candidate.slice(first, last + 1);
 }
 
+type ChatMessage = {
+  role: string;
+  content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
+};
+
 async function requestChatCompletion({
   baseUrl,
   apiKey,
@@ -104,7 +109,7 @@ async function requestChatCompletion({
   baseUrl: string;
   apiKey: string;
   model: string;
-  messages: Array<{ role: string; content: string }>;
+  messages: ChatMessage[];
 }) {
   const timeoutMs = Number(process.env.MIMO_TIMEOUT_MS || 30000);
   console.log(`[AI] MiMo request: ${baseUrl}/chat/completions, model=${model}, timeout=${timeoutMs}ms`);

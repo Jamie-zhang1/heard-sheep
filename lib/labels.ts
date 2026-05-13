@@ -22,7 +22,8 @@ export const TASK_LABELS: TaskLabel[] = [
 export const SOURCE_LABEL_MAP: Record<SourceType, string> = {
   recording: "recording",
   upload: "upload",
-  paste: "paste"
+  paste: "paste",
+  image: "paste"
 };
 
 export function getTaskLabel(id: string) {
