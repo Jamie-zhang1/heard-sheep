@@ -12,7 +12,9 @@ export type TranscribeResult = {
   duration?: number;
   source: Exclude<SourceType, "paste">;
   provider: string;
+  model?: string;
   fallbackUsed?: boolean;
+  error?: string;
 };
 
 export interface AsrProvider {

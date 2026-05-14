@@ -11,7 +11,7 @@ export type TaskLabel = {
 };
 
 export type AnalyzeMeta = {
-  provider: "mimo" | "mock" | "mock_fallback";
+  provider: "deepseek" | "mimo" | "mock" | "mock_fallback";
   model?: string;
   fallbackUsed: boolean;
   error?: string;

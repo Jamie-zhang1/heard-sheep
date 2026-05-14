@@ -1,6 +1,6 @@
 # 《听到了咩》可开发版 PRD v1.0
 
-更新时间：2026-05-13  
+更新时间：2026-05-14  
 当前状态：Next.js Web MVP 已可运行  
 代码基准：当前 `heard-sheep` 工作区
 
@@ -61,8 +61,9 @@
 - 录音、上传音频、粘贴转写稿、上传图片入口。
 - 浏览器录音，支持暂停、继续、结束、重点标记。
 - 浏览器 Web Speech API 实时识别尝试。
-- 服务端 `/api/transcribe` provider 架构，当前为 mock ASR。
-- `/api/analyze` provider 架构，支持 MiMo OpenAI-compatible API 与 mock fallback。
+- 服务端 `/api/transcribe` provider 架构，支持 Xiaomi MiMo 音频理解、OpenAI-compatible ASR provider 与 mock fallback。
+- `/api/vision/extract-text` provider 架构，支持 Xiaomi MiMo 图片理解，失败时回到手动确认图片文字。
+- `/api/analyze` provider 架构，默认使用 DeepSeek V4 Flash，保留 MiMo OpenAI-compatible API 与 mock fallback。
 - Zod 校验 AI 输出结构。
 - 结果页三 Tab。
 - 任务详情与任务编辑。
@@ -73,7 +74,6 @@
 
 ### 3.2 当前不做
 
-- 真实服务端 ASR 供应商接入。
 - 多用户账号体系。
 - 团队协作和权限。
 - 云端同步。
@@ -121,7 +121,7 @@
 - 录音重点标记。
 - 录音少于 5 秒时提示可重新录音或继续处理。
 - 浏览器支持 Web Speech API 时显示实时识别文本。
-- 结束后进入转写确认或服务端 mock 转写。
+- 结束后进入转写确认；服务端可使用 Xiaomi MiMo 音频理解做真实转写验证，失败时可回退 mock。
 
 ### 5.3 上传音频
 
@@ -149,12 +149,15 @@
 - 支持 PNG / JPG / WebP。
 - 支持多图选择，最多 9 张。
 - 展示预览与文件名。
-- 通过 `/api/analyze` 的 `images` 字段进入 AI 分析。
+- 调用 `/api/vision/extract-text` 自动提取图片文字。
+- 自动进入“确认图片文字”页并预填识别结果。
+- 用户确认或修改后，继续调用 DeepSeek 生成任务计划。
 
 限制：
 
+- DeepSeek V4 Flash 当前使用文本 Chat Completions，不直接读图；图片理解已拆给 Xiaomi Vision Provider。
+- Xiaomi 图片理解失败时，前端会降级到“确认图片文字”流程，用户可粘贴/校对截图文字后继续生成任务。
 - mock 模式不会真实 OCR。
-- 真实图片理解依赖配置的 LLM Provider 是否支持视觉输入。
 
 ### 5.6 转写确认
 
@@ -169,11 +172,12 @@
 
 已实现：
 
-- `/api/analyze` 接收 `raw_text`、`source`，可选 `images`。
-- 默认 provider 为 MiMo。
-- 未配置 `MIMO_API_KEY` 或 provider 失败时可回退 mock。
+- `/api/analyze` 接收 `raw_text`、`source`。
+- 默认 provider 为 DeepSeek V4 Flash。
+- 当前推荐模型为 `deepseek-v4-flash`。
+- 未配置 `DEEPSEEK_API_KEY` 或 provider 失败时可回退 mock。
 - 使用 Zod 校验 AI 输出。
-- MiMo 输出 JSON 解析失败时会尝试一次修复请求。
+- 真实模型输出 JSON 解析失败时会尝试一次修复请求。
 - 结果包含 `meta`，用于标记 provider、model、fallback 状态。
 
 ### 5.8 结果页
@@ -246,7 +250,7 @@ type AnalyzeResult = {
   global_confirm_questions: string[]
   warnings: string[]
   meta?: {
-    provider: "mimo" | "mock" | "mock_fallback"
+    provider: "deepseek" | "mimo" | "mock" | "mock_fallback"
     model?: string
     fallbackUsed: boolean
     error?: string
@@ -376,7 +380,7 @@ type TaskItem = {
 首页 → 上传音频 → 开始转写 → 转写确认 → AI 分析 → 结果页
 ```
 
-状态：已实现，服务端转写当前为 mock。
+状态：已实现；当前可配置 `ASR_PROVIDER=xiaomi-audio` 使用 Xiaomi MiMo 音频理解做真实转写验证，也保留 OpenAI-compatible ASR provider 与 mock fallback。
 
 ### 粘贴转写稿流程
 
@@ -389,15 +393,15 @@ type TaskItem = {
 ### 图片流程
 
 ```text
-首页 → 识别图片 → 上传图片 → AI 分析 → 结果页
+首页 → 识别图片 → 上传图片 → Xiaomi 图片理解 → 确认图片文字 → DeepSeek AI 分析 → 结果页
 ```
 
-状态：已实现入口和链路；真实识别质量依赖 AI provider 能力。
+状态：已实现；图片文字由 Xiaomi MiMo 自动提取并预填，识别失败时允许手动粘贴文字继续分析。
 
 ## 11. 后续迭代建议
 
-1. 接入真实服务端 ASR provider。
-2. 完善图片 OCR / 多模态识别稳定性。
+1. 持续评估 Xiaomi 音频理解的真实转写质量，必要时接入专门 ASR 服务。
+2. 完善图片 OCR / 多模态识别稳定性，补充更多中文截图样本测试。
 3. 增加多轮追问，用于补齐缺失信息。
 4. 增加真实日历 / 提醒事项同步。
 5. 增加云端存储、账号和多端同步。

@@ -4,6 +4,7 @@ export const TASK_LABELS: TaskLabel[] = [
   { id: "recording", name: "录音", type: "source" },
   { id: "upload", name: "上传", type: "source" },
   { id: "paste", name: "转写", type: "source" },
+  { id: "image", name: "图片", type: "source" },
   { id: "meeting", name: "会议", type: "source" },
   { id: "wechat", name: "微信", type: "source" },
   { id: "note", name: "备忘", type: "source" },
@@ -23,7 +24,7 @@ export const SOURCE_LABEL_MAP: Record<SourceType, string> = {
   recording: "recording",
   upload: "upload",
   paste: "paste",
-  image: "paste"
+  image: "image"
 };
 
 export function getTaskLabel(id: string) {

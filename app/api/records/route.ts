@@ -13,7 +13,8 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as RecordCreateInput;
-    if (!body.analysis || !body.transcriptText || !body.rawText || !body.source) {
+    const isImageRecord = body.source === "image";
+    if (!body.analysis || !body.source || (!isImageRecord && (!body.transcriptText || !body.rawText))) {
       return NextResponse.json(
         { code: "INVALID_RECORD", message: "保存记录缺少必要字段" },
         { status: 400 }

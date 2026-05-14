@@ -18,7 +18,7 @@ import {
 import { SheepIcon } from "./SheepIcon";
 import { EmptyState, RecordRow, SectionTitle } from "./ui";
 import { formatBytes, formatDuration } from "@/lib/format";
-import { createSpeechRecognition, isBrowserAsrAvailable } from "@/lib/asr";
+import { createSpeechRecognition, isBrowserAsrAvailable } from "@/lib/asr/client";
 import { apiPath } from "@/lib/api-path";
 import type { AnalyzeResult, Mark, RecordItem, SourceType } from "@/lib/types";
 
@@ -28,6 +28,8 @@ type Overlay =
   | "upload"
   | "paste"
   | "image"
+  | "image-text"
+  | "understanding-image"
   | "transcribing"
   | "confirm"
   | "analyzing"
@@ -41,6 +43,7 @@ const EXAMPLE_TEXT =
   "你帮我把这个活动方案再整理一下，明天下午前先给我一个初稿。重点补一下用户画像和预算，竞品案例也可以加两个。预算那里如果没有具体数据，你先按大概范围写，但要标出来。";
 
 const TRANSCRIBE_STEPS = ["正在上传录音", "正在转写语音", "正在整理文字"];
+const IMAGE_STEPS = ["正在上传图片", "正在识别文字", "正在整理可确认内容"];
 const ANALYZE_STEPS = ["正在整理口头内容", "正在提取待办事项", "正在生成执行方案", "正在检查缺失信息"];
 
 type TranscriptDraft = {
@@ -48,6 +51,23 @@ type TranscriptDraft = {
   source: SourceType;
   duration?: number;
   audioName?: string;
+  asrMeta?: {
+    provider: string;
+    model?: string;
+    fallbackUsed: boolean;
+    error?: string;
+  };
+};
+
+type VisionExtractionResponse = {
+  extractedText: string;
+  summary?: string;
+  meta: {
+    provider: "xiaomi-image" | "mock" | "fallback";
+    model?: string;
+    fallbackUsed: boolean;
+    error?: string;
+  };
 };
 
 export function HomeClient({ records }: { records: RecordItem[] }) {
@@ -64,6 +84,8 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [imageError, setImageError] = useState("");
+  const [imageDebugInfo, setImageDebugInfo] = useState("");
+  const [imageText, setImageText] = useState("");
   const [pasteText, setPasteText] = useState("");
   const [pasteError, setPasteError] = useState("");
   const [allowShortPaste, setAllowShortPaste] = useState(false);
@@ -130,8 +152,13 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
   }, [overlay, recordingStatus]);
 
   useEffect(() => {
-    if (overlay !== "transcribing" && overlay !== "analyzing") return;
-    const max = overlay === "transcribing" ? TRANSCRIBE_STEPS.length : ANALYZE_STEPS.length;
+    if (overlay !== "transcribing" && overlay !== "analyzing" && overlay !== "understanding-image") return;
+    const max =
+      overlay === "transcribing"
+        ? TRANSCRIBE_STEPS.length
+        : overlay === "understanding-image"
+          ? IMAGE_STEPS.length
+          : ANALYZE_STEPS.length;
     setProcessStep(0);
     const id = window.setInterval(() => {
       setProcessStep((value) => Math.min(value + 1, max - 1));
@@ -247,7 +274,11 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
             text: trimmed,
             source: "recording",
             duration,
-            audioName: "recording.webm"
+            audioName: "recording.webm",
+            asrMeta: {
+              provider: "browser-web-speech",
+              fallbackUsed: false
+            }
           };
           setTranscript(draft);
           setConfirmedText(trimmed);
@@ -278,12 +309,23 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
         body: formData
       });
       if (!response.ok) throw new Error("transcribe failed");
-      const data = (await response.json()) as { text: string; duration: number; source: SourceType };
+      const data = (await response.json()) as {
+        text: string;
+        duration?: number;
+        source: SourceType;
+        meta?: {
+          provider: string;
+          model?: string;
+          fallbackUsed: boolean;
+          error?: string;
+        };
+      };
       const draft = {
         text: data.text,
         source: data.source,
         duration: data.duration,
-        audioName
+        audioName,
+        asrMeta: data.meta
       };
       setTranscript(draft);
       setConfirmedText(data.text);
@@ -342,6 +384,8 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
 
   function handleImageFiles(files: FileList | null) {
     setImageError("");
+    setImageDebugInfo("");
+    setImageText("");
     if (!files || files.length === 0) {
       return;
     }
@@ -395,44 +439,74 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
       setImageError("请先选择图片。");
       return;
     }
-    setOverlay("analyzing");
+    setOverlay("understanding-image");
     setLastError("");
     try {
-      const analysisResponse = await fetch(apiPath("/api/analyze"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          raw_text: "",
-          source: "image",
-          images: imagePreviews
-        })
-      });
-      if (!analysisResponse.ok) throw new Error("analyze failed");
-      const analysis = (await analysisResponse.json()) as AnalyzeResult;
-      const saveResponse = await fetch(apiPath("/api/records"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          source: "image",
-          rawText: "",
-          transcriptText: "",
-          audioName: imageFiles.map((f) => f.name).join(", "),
-          analysis
-        })
-      });
-      if (!saveResponse.ok) throw new Error("save failed");
-      const { record } = (await saveResponse.json()) as { record: RecordItem };
-      if (analysis.tasks.length === 0) {
-        setNoTaskRecordId(record.id);
-        setOverlay("no-task");
-        router.refresh();
-        return;
+      const results: VisionExtractionResponse[] = [];
+      for (let index = 0; index < imagePreviews.length; index++) {
+        const response = await fetch(apiPath("/api/vision/extract-text"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            imageBase64: imagePreviews[index],
+            mimeType: imageFiles[index]?.type,
+            filename: imageFiles[index]?.name
+          })
+        });
+        if (!response.ok) throw new Error("image understand failed");
+        results.push((await response.json()) as VisionExtractionResponse);
       }
-      router.push(`/result/${record.id}`);
+
+      const mergedText = results
+        .map((result, index) => {
+          const text = result.extractedText.trim();
+          if (!text) return "";
+          return imagePreviews.length > 1 ? `【图片 ${index + 1}】\n${text}` : text;
+        })
+        .filter(Boolean)
+        .join("\n\n");
+      const fallbackUsed = results.some((result) => result.meta.fallbackUsed);
+      const providers = Array.from(new Set(results.map((result) => result.meta.provider))).join(", ");
+      const models = Array.from(new Set(results.map((result) => result.meta.model).filter(Boolean))).join(", ");
+      const debugInfo = `Vision: ${providers}${models ? ` · ${models}` : ""} · fallback=${fallbackUsed ? "yes" : "no"} · ${mergedText.length}字`;
+      setImageDebugInfo(debugInfo);
+      setImageText(mergedText);
+      setImageError(
+        fallbackUsed || !mergedText.trim()
+          ? "未能稳定识别图片文字，请手动补充或粘贴。"
+          : ""
+      );
+      setOverlay("image-text");
     } catch {
-      setLastError("图片识别失败，请稍后重试。");
-      setOverlay("ai-error");
+      setImageDebugInfo("Vision: failed · fallback=yes");
+      setImageError("图片识别失败，请把图片里的文字粘贴到下方，我会继续生成任务。");
+      setOverlay("image-text");
     }
+  }
+
+  async function submitImageText(force = false) {
+    const text = imageText.trim();
+    setImageError("");
+    if (!text) {
+      setImageError("请输入从图片中看到的文字内容。");
+      return;
+    }
+    if (text.length > 8000) {
+      setImageError("文本过长，MVP 阶段建议控制在 8000 字以内。");
+      return;
+    }
+    if (text.length < 20 && !force) {
+      setImageError("内容较短，可能无法生成完整任务。再次点击可继续生成。");
+      return;
+    }
+    const draft = {
+      text,
+      source: "image" as const,
+      audioName: imageFiles.map((file) => file.name).join(", ")
+    };
+    setTranscript(draft);
+    setConfirmedText(text);
+    await analyzeAndSave(draft, text);
   }
 
   async function analyzeAndSave(draft = transcript, text = confirmedText) {
@@ -687,7 +761,7 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
               />
               <FileAudio className="mx-auto mb-2 text-neutral-400" size={42} />
               <p className="text-sm font-semibold text-muted">选择或拖拽音频文件</p>
-              <p className="mt-1 text-[11px] text-neutral-400">MVP 阶段使用 mock 转写结果</p>
+              <p className="mt-1 text-[11px] text-neutral-400">优先使用真实音频理解，失败时可回退</p>
             </label>
             {uploadFile && (
               <div className="mt-4 rounded-2xl border border-brand-light bg-brand-light/45 p-4">
@@ -818,8 +892,63 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
         </FullOverlay>
       )}
 
+      {overlay === "image-text" && (
+        <FullOverlay>
+          <PanelHeader
+            title="确认图片文字"
+            subtitle="已先用 MiMo 识别图片内容，你可以检查后继续生成任务"
+            onClose={() => setOverlay("none")}
+          />
+          <div className="space-y-3 px-6">
+            {imagePreviews.length > 0 && (
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {imagePreviews.map((preview, index) => (
+                  <img
+                    key={index}
+                    src={preview}
+                    alt={`图片 ${index + 1}`}
+                    className="h-20 w-20 shrink-0 rounded-2xl border border-line object-cover"
+                  />
+                ))}
+              </div>
+            )}
+            <textarea
+              value={imageText}
+              onChange={(event) => setImageText(event.target.value)}
+              placeholder="把截图里的聊天记录、会议纪要或口头交代文字粘贴到这里..."
+              className="h-[300px] w-full resize-none rounded-2xl border border-line bg-white p-4 text-[13px] leading-7 outline-none transition focus:border-brand"
+            />
+            {imageError && <p className="text-xs font-semibold leading-5 text-ink">{imageError}</p>}
+            {process.env.NODE_ENV === "development" && imageDebugInfo && (
+              <p className="rounded-xl bg-surface-2 px-3 py-2 text-[11px] font-semibold leading-5 text-muted">
+                {imageDebugInfo}
+              </p>
+            )}
+          </div>
+          <div className="flex-1" />
+          <div className="flex gap-2 px-6 pb-6">
+            <button
+              onClick={() => setOverlay("image")}
+              className="rounded-xl px-4 py-3 text-sm font-semibold text-muted transition active:bg-surface-2"
+            >
+              返回图片
+            </button>
+            <button
+              onClick={() => submitImageText(imageText.trim().length < 20 && !!imageError)}
+              className="flex-1 rounded-xl bg-brand px-4 py-3 text-sm font-bold text-white shadow-btn transition active:scale-[0.99]"
+            >
+              用文字生成任务
+            </button>
+          </div>
+        </FullOverlay>
+      )}
+
       {overlay === "transcribing" && (
         <ProcessingOverlay title="正在把录音转成文字..." subtitle="稍等一下，我在认真听" steps={TRANSCRIBE_STEPS} activeStep={processStep} />
+      )}
+
+      {overlay === "understanding-image" && (
+        <ProcessingOverlay title="正在识别图片内容..." subtitle="先提取文字，再交给 DeepSeek 生成计划" steps={IMAGE_STEPS} activeStep={processStep} />
       )}
 
       {overlay === "confirm" && transcript && (
@@ -832,6 +961,12 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
             {transcript.duration && (
               <span className="rounded-full border border-line px-2.5 py-1 text-[11px] font-semibold text-muted">
                 {formatDuration(transcript.duration)}
+              </span>
+            )}
+            {process.env.NODE_ENV === "development" && transcript.asrMeta && (
+              <span className="rounded-full border border-line bg-surface-2 px-2.5 py-1 text-[11px] font-semibold text-muted">
+                {transcript.asrMeta.provider}
+                {transcript.asrMeta.fallbackUsed ? " · Fallback" : ""}
               </span>
             )}
           </div>

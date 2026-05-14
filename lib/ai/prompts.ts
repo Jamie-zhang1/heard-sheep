@@ -9,6 +9,8 @@ const SYSTEM_PROMPT_BASE = [
   "不要编造原文没有的信息。模糊信息必须进入 missing_info 或 confirm_questions。",
   "截止时间不明确时，deadline_date 必须为 null，deadline_text 保留原文表达或空字符串。",
   "每条任务必须有 source_evidence，且必须来自原文片段。",
+  "只要原文包含要求、安排、交付物、截止时间、需要确认的事项或后续动作，就应该生成 tasks，不要因为主语省略或负责人不明确而返回空数组。",
+  "口头交代常常是命令式或省略句，你需要把其中可执行的动作拆成任务。",
   "如果没有识别出明确任务，tasks 输出空数组，并给出 global_confirm_questions 与 warnings。"
 ];
 
@@ -27,7 +29,7 @@ const JSON_SCHEMA_EXAMPLE = JSON.stringify(
         id: "task_001",
         title: "任务标题",
         description: "任务描述",
-        priority: "high | medium | low",
+        priority: "high",
         priority_reason: "优先级原因",
         deadline_text: "原文截止时间表达；不明确则为空字符串",
         deadline_date: null,
@@ -39,7 +41,7 @@ const JSON_SCHEMA_EXAMPLE = JSON.stringify(
         confirm_questions: ["建议确认问题"],
         risk: "风险提示；没有则为空字符串",
         source_evidence: "原文依据片段",
-        confidence: "high | medium | low",
+        confidence: "high",
         need_confirm: true,
         status: "todo"
       }
@@ -89,11 +91,12 @@ export function buildAnalyzeMessages(rawText: string, source: SourceType, images
     "原始转写文本：",
     rawText
   ].filter(Boolean);
-  userContent.push({ type: "text", text: textParts.join("\n\n") });
+  const textContent = textParts.join("\n\n");
+  userContent.push({ type: "text", text: textContent });
 
   return [
     { role: "system", content: systemParts.join("\n") },
-    { role: "user", content: userContent }
+    { role: "user", content: images && images.length > 0 ? userContent : textContent }
   ];
 }
 

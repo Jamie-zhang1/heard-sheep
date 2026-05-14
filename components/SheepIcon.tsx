@@ -14,8 +14,13 @@ export function SheepIcon({ className, variant = "front" }: SheepIconProps) {
     <span
       className={clsx(
         "relative inline-flex items-center justify-center overflow-visible",
-        variant === "floating" && "sheep-float-soft",
-        variant === "thinking" && "sheep-thinking-soft",
+        "sheep-icon-motion",
+        variant === "front" && "sheep-motion-front",
+        variant === "floating" && "sheep-motion-floating",
+        variant === "thinking" && "sheep-motion-thinking sheep-thinking-soft",
+        variant === "sleepy" && "sheep-motion-sleepy",
+        variant === "tiny" && "sheep-motion-tiny",
+        variant === "recording" && "sheep-motion-recording",
         className
       )}
       aria-hidden="true"

@@ -9,6 +9,7 @@ export const mockAsrProvider: AsrProvider = {
       duration: Number.isFinite(input.duration) && input.duration && input.duration > 0 ? Math.round(input.duration) : 138,
       source: input.source,
       provider: "mock",
+      model: "mock-transcript",
       fallbackUsed: false
     };
   }

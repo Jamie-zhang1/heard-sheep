@@ -1,5 +1,10 @@
 # 听到了咩 / heard-sheep
 
+> Current AI default: DeepSeek V4. Use `AI_PROVIDER=deepseek`,
+> `DEEPSEEK_BASE_URL=https://api.deepseek.com`, and
+> `DEEPSEEK_MODEL=deepseek-v4-flash`. For higher quality, switch to
+> `deepseek-v4-pro`. See [DeepSeek V4 Provider](docs/deepseek-v4-provider.md).
+
 以录音为主入口的 AI 语音任务助手。它面向职场个人，帮助用户把领导、同事、会议中的口头交代，转化为可执行、可确认、可追踪的任务计划。
 
 当前仓库是一个可运行的 Next.js Web MVP，主链路已经打通：
@@ -17,8 +22,9 @@
 ## 当前状态
 
 - UI：移动端优先，375px 手机容器，小羊品牌视觉，奶油紫 + 黑白轻工具风。
-- 转写：浏览器端优先尝试 Web Speech API；服务端 `/api/transcribe` 当前为 mock ASR，但已经 provider 化。
-- AI：`/api/analyze` 支持 Xiaomi MiMo OpenAI-compatible Chat Completions；未配置密钥或调用失败时可回退到 mock AI。
+- 转写：浏览器端优先尝试 Web Speech API；服务端 `/api/transcribe` 已支持 Xiaomi MiMo 音频理解、OpenAI-compatible ASR provider 与 mock fallback。
+- AI：`/api/analyze` 默认支持 DeepSeek V4 OpenAI-compatible Chat Completions；未配置密钥或调用失败时可回退到 mock AI，MiMo Provider 仍作为兼容选项保留。
+- 图片：`/api/vision/extract-text` 已支持 Xiaomi MiMo 图片理解，上传图片后会自动提取文字并预填“确认图片文字”页；失败时仍可手动粘贴。
 - 存储：本地 JSON 文件 `data/records.json`，适合 MVP 演示和本地开发。
 - 部署路径：默认启用 `basePath=/sheep`，本地访问地址为 `/sheep`。
 
@@ -31,7 +37,7 @@
 - 录音能力：麦克风授权、计时、暂停/继续、结束、录音重点标记
 - 上传音频：支持 mp3 / wav / m4a / webm
 - 粘贴转写稿：示例文本、清空、空文本/过短/过长校验
-- 图片识别：支持多图上传，当前通过 AI 分析链路处理
+- 图片识别：支持多图上传；先用 Xiaomi MiMo 提取图片文字，再进入确认页，确认后继续交给 DeepSeek 生成任务计划
 
 ### 分析与任务
 
@@ -81,22 +87,49 @@ npm run start
 ```env
 NEXT_PUBLIC_BASE_PATH=/sheep
 
-AI_PROVIDER=mimo
+AI_PROVIDER=deepseek
 AI_ALLOW_MOCK_FALLBACK=true
-MIMO_API_KEY=
-MIMO_BASE_URL=https://api.xiaomimimo.com/v1
-MIMO_MODEL=mimo-chat
-MIMO_TIMEOUT_MS=30000
 
-ASR_PROVIDER=mock
+DEEPSEEK_API_KEY=
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+DEEPSEEK_MODEL=deepseek-v4-flash
+DEEPSEEK_TIMEOUT_MS=60000
+
+MIMO_API_KEY=
+MIMO_BASE_URL=https://token-plan-cn.xiaomimimo.com/v1
+MIMO_MODEL=MiMo-V2.5-Pro
+MIMO_TIMEOUT_MS=60000
+
+XIAOMI_API_KEY=
+XIAOMI_BASE_URL=https://api.xiaomimimo.com/v1
+XIAOMI_TIMEOUT_MS=60000
+
+VISION_PROVIDER=xiaomi-image
+VISION_ALLOW_TEXT_FALLBACK=true
+XIAOMI_IMAGE_MODEL=mimo-v2.5
+
+ASR_PROVIDER=xiaomi-audio
 ASR_ALLOW_MOCK_FALLBACK=true
+XIAOMI_AUDIO_MODEL=mimo-v2.5
+XIAOMI_AUDIO_INPUT_MODE=input_audio
+
+ASR_API_KEY=
+ASR_BASE_URL=https://api.openai.com/v1
+ASR_MODEL=whisper-1
+ASR_LANGUAGE=zh
+ASR_TIMEOUT_MS=60000
 ```
 
 说明：
 
-- `MIMO_API_KEY` 只在服务端读取，不要使用 `NEXT_PUBLIC_` 前缀。
-- 未配置 `MIMO_API_KEY` 时，`/api/analyze` 自动使用 mock AI。
-- `ASR_PROVIDER=mock` 是当前服务端默认转写方式。
+- `DEEPSEEK_API_KEY` 只在服务端读取，不要使用 `NEXT_PUBLIC_` 前缀。
+- DeepSeek 当前按 OpenAI 兼容协议接入：`https://api.deepseek.com`。
+- 默认模型推荐 `deepseek-v4-flash`，成本更低且支持 JSON Output；复杂高质量分析可改为 `deepseek-v4-pro`。
+- 未配置 `DEEPSEEK_API_KEY` 时，`/api/analyze` 自动使用 mock AI。
+- MiMo Provider 仍保留；设置 `AI_PROVIDER=mimo` 后使用 `MIMO_*` 变量。
+- `VISION_PROVIDER=xiaomi-image` 会调用 Xiaomi Chat Completions 多模态接口，使用 Base64 图片提取文字。
+- `ASR_PROVIDER=xiaomi-audio` 会调用 Xiaomi Chat Completions 多模态接口，使用 Base64 音频做转写验证。
+- `ASR_PROVIDER=openai-compatible` / `openai` / `whisper` 会调用 `${ASR_BASE_URL}/audio/transcriptions`，该能力仍保留。
 - 浏览器支持 Web Speech API 时，录音过程中会优先尝试浏览器实时识别；没有识别结果时走服务端 mock 转写。
 
 更多配置见 [docs/ai-asr-provider-setup.md](docs/ai-asr-provider-setup.md)。
@@ -117,6 +150,7 @@ ASR_ALLOW_MOCK_FALLBACK=true
 API 路由同样挂在 basePath 下，例如：
 
 - `/sheep/api/transcribe`
+- `/sheep/api/vision/extract-text`
 - `/sheep/api/analyze`
 - `/sheep/api/records`
 - `/sheep/api/tasks`
@@ -139,9 +173,10 @@ data/records.json
 
 ## 当前限制
 
-- 服务端 ASR 仍为 mock，并未接入真实语音识别供应商。
+- Xiaomi 音频理解当前用于真实转写能力验证；不同音频格式和噪声环境下的质量仍需继续评估。
+- 服务端 ASR 仍保留 OpenAI-compatible provider；需要配置真实 `ASR_API_KEY`、`ASR_BASE_URL` 和 `ASR_MODEL` 才会调用对应供应商。
 - 日历联动、会员、评分、退出登录等仍是 MVP 占位交互。
-- 图片识别依赖当前 AI provider 能力；mock 模式不会进行真实 OCR。
+- 图片识别已拆分为独立 Xiaomi Vision Provider；如果 Xiaomi 调用失败，会回到手动确认图片文字的 fallback。
 - 当前是单用户本地 MVP，不包含账号体系、团队协作、云端同步或权限系统。
 
 ## 常用命令

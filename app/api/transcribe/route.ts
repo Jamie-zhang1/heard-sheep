@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { transcribeAudio } from "@/lib/asr";
+import { transcribeAudio } from "@/lib/asr/server";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type AudioSource = "recording" | "upload";
@@ -28,6 +29,10 @@ export async function POST(request: Request) {
       );
     }
 
+    console.log(
+      `[ASR] transcribe route source=${source} filename=${fileName} mime=${audio.type || "unknown"} bytes=${audio.size}`
+    );
+
     const result = await transcribeAudio({
       file: audio,
       fileName,
@@ -35,7 +40,19 @@ export async function POST(request: Request) {
       duration: Number.isFinite(durationValue) ? durationValue : undefined
     });
 
-    return NextResponse.json(result);
+    console.log(
+      `[ASR] transcribe route result provider=${result.provider} model=${result.model || ""} fallbackUsed=${!!result.fallbackUsed} textLength=${result.text.length}`
+    );
+
+    return NextResponse.json({
+      ...result,
+      meta: {
+        provider: result.provider,
+        model: result.model,
+        fallbackUsed: !!result.fallbackUsed,
+        error: result.error
+      }
+    });
   } catch (error) {
     console.error("[ASR] Transcribe route failed", error);
     return NextResponse.json(

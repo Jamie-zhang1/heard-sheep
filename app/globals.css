@@ -142,6 +142,51 @@ select {
   }
 }
 
+.sheep-wallpaper {
+  display: none;
+}
+
+.sheep-wallpaper::before,
+.sheep-wallpaper::after {
+  display: none;
+}
+
+.sheep-wallpaper::before {
+  opacity: 0.026;
+  background-size: 156px 156px;
+  background-position: 26px 42px;
+  filter: grayscale(0.08) blur(0.15px);
+  transform: rotate(-6deg) scale(1.04);
+  animation: sheepWallpaperDrift 34s ease-in-out infinite alternate;
+}
+
+.sheep-wallpaper::after {
+  opacity: 0.018;
+  background-size: 220px 220px;
+  background-position: 132px 128px;
+  filter: grayscale(0.16) blur(0.45px);
+  transform: rotate(5deg) scale(1.08);
+  animation: sheepWallpaperDriftAlt 42s ease-in-out infinite alternate;
+}
+
+@keyframes sheepWallpaperDrift {
+  from {
+    transform: translate3d(0, 0, 0) rotate(-6deg) scale(1.04);
+  }
+  to {
+    transform: translate3d(-18px, 24px, 0) rotate(-4deg) scale(1.04);
+  }
+}
+
+@keyframes sheepWallpaperDriftAlt {
+  from {
+    transform: translate3d(0, 0, 0) rotate(5deg) scale(1.08);
+  }
+  to {
+    transform: translate3d(18px, -14px, 0) rotate(3deg) scale(1.08);
+  }
+}
+
 .sheep-bg {
   pointer-events: none;
   position: absolute;
@@ -153,6 +198,79 @@ select {
 
 .sheep-bg img {
   filter: drop-shadow(0 6px 14px rgba(124, 111, 247, 0.12));
+}
+
+.sheep-orbit {
+  pointer-events: none;
+  position: absolute;
+  z-index: 0;
+  width: var(--orbit-size, 72px);
+  opacity: var(--orbit-opacity, 0.045);
+  filter: blur(var(--orbit-blur, 0.25px)) grayscale(0.08);
+  animation:
+    sheepOrbit var(--orbit-duration, 18s) ease-in-out infinite,
+    sheepBreathe calc(var(--orbit-duration, 18s) * 0.7) ease-in-out infinite;
+  animation-delay: var(--orbit-delay, 0s);
+  will-change: transform, opacity;
+}
+
+.sheep-orbit-a {
+  --orbit-size: 58px;
+  --orbit-opacity: 0.045;
+  --orbit-duration: 15s;
+  --orbit-delay: -2s;
+  left: 28px;
+  top: 118px;
+}
+
+.sheep-orbit-b {
+  --orbit-size: 74px;
+  --orbit-opacity: 0.04;
+  --orbit-duration: 19s;
+  --orbit-delay: -7s;
+  right: 34px;
+  top: 258px;
+}
+
+.sheep-orbit-c {
+  --orbit-size: 62px;
+  --orbit-opacity: 0.034;
+  --orbit-duration: 21s;
+  --orbit-delay: -11s;
+  left: 30px;
+  bottom: 238px;
+}
+
+.sheep-orbit-d {
+  --orbit-size: 82px;
+  --orbit-opacity: 0.032;
+  --orbit-duration: 24s;
+  --orbit-delay: -5s;
+  right: 30px;
+  bottom: 104px;
+}
+
+@keyframes sheepOrbit {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(-2deg);
+  }
+  33% {
+    transform: translate3d(14px, -20px, 0) rotate(4deg);
+  }
+  66% {
+    transform: translate3d(-12px, 16px, 0) rotate(-3deg);
+  }
+}
+
+@keyframes sheepBreathe {
+  0%,
+  100% {
+    opacity: calc(var(--orbit-opacity, 0.045) * 0.72);
+  }
+  50% {
+    opacity: var(--orbit-opacity, 0.045);
+  }
 }
 
 .sheep-bg-a {
@@ -242,6 +360,108 @@ select {
 
 .sheep-thinking-soft {
   filter: drop-shadow(0 8px 20px rgba(124, 111, 247, 0.18));
+}
+
+.sheep-icon-motion {
+  will-change: transform;
+  transform-origin: center bottom;
+}
+
+.sheep-motion-front {
+  animation: sheepAliveFront 5.8s ease-in-out infinite;
+}
+
+.sheep-motion-floating {
+  animation: sheepAliveFloat 7.2s ease-in-out infinite;
+}
+
+.sheep-motion-thinking {
+  animation: sheepAliveThinking 3.6s ease-in-out infinite;
+}
+
+.sheep-motion-sleepy {
+  animation: sheepAliveSleepy 6.8s ease-in-out infinite;
+}
+
+.sheep-motion-tiny {
+  animation: sheepAliveTiny 4.8s ease-in-out infinite;
+}
+
+.sheep-motion-recording {
+  animation: sheepAliveRecording 1.8s ease-in-out infinite;
+}
+
+@keyframes sheepAliveFront {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  45% {
+    transform: translate3d(0, -7px, 0) scale(1.035);
+  }
+  60% {
+    transform: translate3d(0, -4px, 0) rotate(-2deg) scale(1.025);
+  }
+}
+
+@keyframes sheepAliveFloat {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(-1deg);
+  }
+  50% {
+    transform: translate3d(8px, -18px, 0) rotate(4deg);
+  }
+}
+
+@keyframes sheepAliveThinking {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(0.98);
+  }
+  50% {
+    transform: translate3d(0, -10px, 0) scale(1.08);
+  }
+}
+
+@keyframes sheepAliveSleepy {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  55% {
+    transform: translate3d(0, 5px, 0) rotate(-2deg) scale(0.975);
+  }
+}
+
+@keyframes sheepAliveTiny {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(0, -5px, 0) scale(1.1);
+  }
+}
+
+@keyframes sheepAliveRecording {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(0, -8px, 0) scale(1.14);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheep-icon-motion,
+  .sheep-bg,
+  .sheep-orbit,
+  .sheep-wallpaper::before,
+  .sheep-wallpaper::after {
+    animation: none !important;
+  }
 }
 
 @keyframes dotPulse {

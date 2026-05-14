@@ -78,7 +78,10 @@ export function LabelPill({
 }
 
 export function TaskLabelList({ labels, limit }: { labels?: string[]; limit?: number }) {
-  const visible = limit ? labels?.slice(0, limit) : labels;
+  const meaningful = labels?.filter((label) => getTaskLabel(label)?.type !== "system") ?? [];
+  const fallback = labels ?? [];
+  const source = meaningful.length ? meaningful : fallback;
+  const visible = limit ? source.slice(0, limit) : source;
   if (!visible?.length) return null;
   return (
     <div className="flex flex-wrap gap-1.5">
@@ -136,7 +139,7 @@ export function TaskCard({ task, href }: { task: TaskItem; href?: string }) {
       <p className="line-clamp-2 text-xs leading-5 text-ink-2">{task.description}</p>
       {(task.labels?.length ?? 0) > 0 && (
         <div className="mt-3">
-          <TaskLabelList labels={task.labels} limit={3} />
+          <TaskLabelList labels={task.labels} limit={2} />
         </div>
       )}
       <div className="mt-2 flex flex-wrap gap-1.5">

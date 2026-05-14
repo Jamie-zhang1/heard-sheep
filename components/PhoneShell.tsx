@@ -12,29 +12,27 @@ type PhoneShellProps = {
 export function PhoneShell({ active = "home", children, hideNav = false, dark = false }: PhoneShellProps) {
   return (
     <main className={clsx("phone-frame", dark && "phone-frame-dark")}>
-      <div className="sheep-bg sheep-bg-a -right-6 top-[10%] w-28">
+      <div className="sheep-wallpaper" aria-hidden="true" />
+      <div className="sheep-orbit sheep-orbit-a">
         <SheepIcon variant="floating" />
       </div>
-      <div className="sheep-bg sheep-bg-b -left-4 bottom-[24%] w-24">
+      <div className="sheep-orbit sheep-orbit-b">
         <SheepIcon variant="floating" />
       </div>
-      <div className="sheep-bg sheep-bg-c right-8 top-[58%] w-20">
+      <div className="sheep-orbit sheep-orbit-c">
+        <SheepIcon variant="floating" />
+      </div>
+      <div className="sheep-orbit sheep-orbit-d">
+        <SheepIcon variant="floating" />
+      </div>
+      <div className="sheep-bg sheep-bg-a -right-3 top-[8%] w-20">
+        <SheepIcon variant="floating" />
+      </div>
+      <div className="sheep-bg sheep-bg-b -left-3 bottom-[26%] w-16">
+        <SheepIcon variant="floating" />
+      </div>
+      <div className="sheep-bg sheep-bg-c right-10 top-[57%] w-14">
         <SheepIcon variant="sleepy" />
-      </div>
-      <div className="sheep-bg sheep-bg-d left-10 top-[30%] w-16">
-        <SheepIcon variant="tiny" />
-      </div>
-      <div className="sheep-bg sheep-bg-e right-5 top-[37%] w-14">
-        <SheepIcon variant="tiny" />
-      </div>
-      <div className="sheep-bg sheep-bg-f left-8 top-[63%] w-20">
-        <SheepIcon variant="floating" />
-      </div>
-      <div className="sheep-bg sheep-bg-g right-10 bottom-[10%] w-24">
-        <SheepIcon variant="sleepy" />
-      </div>
-      <div className="sheep-bg sheep-bg-h left-5 bottom-[6%] w-14">
-        <SheepIcon variant="tiny" />
       </div>
       <StatusBar />
       <section className="relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden">{children}</section>

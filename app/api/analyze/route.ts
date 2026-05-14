@@ -51,13 +51,15 @@ export async function POST(request: Request) {
     return NextResponse.json(result);
   } catch (error) {
     console.error("[AI] Analyze route failed", error);
+    const isProviderError = error instanceof AnalyzeProviderError;
+    const status = isProviderError && error.code === "IMAGE_PROVIDER_UNSUPPORTED" ? 422 : 500;
     return NextResponse.json(
       {
-        code: error instanceof AnalyzeProviderError ? error.code : "AI_ANALYZE_FAILED",
+        code: isProviderError ? error.code : "AI_ANALYZE_FAILED",
         message: error instanceof Error ? error.message : "AI 分析暂时失败，请重试。",
         fallbackUsed: false
       },
-      { status: 500 }
+      { status }
     );
   }
 }

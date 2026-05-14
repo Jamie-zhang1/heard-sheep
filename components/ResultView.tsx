@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { ArrowLeft, ChevronRight, ClipboardList, Info, Route, Text } from "lucide-react";
-import { Pill, PriorityBadge, TaskCard } from "./ui";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeft, Check, ChevronRight, ClipboardList, Info, Route, Text } from "lucide-react";
+import { Pill, PriorityBadge, StatusBadge, TaskLabelList } from "./ui";
 import { formatDateTime, formatDuration } from "@/lib/format";
-import type { RecordItem } from "@/lib/types";
+import { apiPath } from "@/lib/api-path";
+import type { RecordItem, TaskItem } from "@/lib/types";
 
 type Tab = "text" | "tasks" | "plan";
 
@@ -17,9 +18,36 @@ const tabs: Array<{ key: Tab; label: string; icon: typeof Text }> = [
 
 export function ResultView({ record }: { record: RecordItem }) {
   const router = useRouter();
-  const [tab, setTab] = useState<Tab>("text");
-  const orderedTasks = [...record.tasks].sort((a, b) => priorityWeight(a.priority) - priorityWeight(b.priority));
-  const showAiMeta = process.env.NODE_ENV !== "production" && record.aiMeta && (record.aiMeta.provider !== "mimo" || record.aiMeta.fallbackUsed);
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get("tab") === "tasks" ? "tasks" : searchParams.get("tab") === "plan" ? "plan" : "text";
+  const [tab, setTab] = useState<Tab>(initialTab);
+  const [tasks, setTasks] = useState(record.tasks);
+  const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
+  const orderedTasks = [...tasks].sort((a, b) => priorityWeight(a.priority) - priorityWeight(b.priority));
+  const showAiMeta =
+    process.env.NODE_ENV !== "production" &&
+    record.aiMeta &&
+    (record.aiMeta.fallbackUsed || record.aiMeta.provider === "mock" || record.aiMeta.provider === "mock_fallback");
+
+  async function toggleTaskDone(task: TaskItem) {
+    if (updatingTaskId) return;
+    const nextStatus = task.status === "done" ? "todo" : "done";
+    setUpdatingTaskId(task.id);
+    setTasks((items) => items.map((item) => (item.id === task.id ? { ...item, status: nextStatus } : item)));
+    try {
+      const response = await fetch(apiPath(`/api/tasks/${task.id}`), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: nextStatus })
+      });
+      if (!response.ok) throw new Error("update failed");
+      router.refresh();
+    } catch {
+      setTasks((items) => items.map((item) => (item.id === task.id ? task : item)));
+    } finally {
+      setUpdatingTaskId(null);
+    }
+  }
 
   return (
     <>
@@ -40,7 +68,7 @@ export function ResultView({ record }: { record: RecordItem }) {
               </span>
             )}
           </div>
-          <p className="mt-0.5 text-[11px] text-muted">共提取 {record.tasks.length} 项任务</p>
+          <p className="mt-0.5 text-[11px] text-muted">共提取 {tasks.length} 项任务</p>
         </div>
         <button
           onClick={() => router.push("/history")}
@@ -121,10 +149,10 @@ export function ResultView({ record }: { record: RecordItem }) {
 
         {tab === "tasks" && (
           <div className="space-y-2">
-            {record.tasks.length ? (
-              record.tasks.map((task) => (
+            {tasks.length ? (
+              tasks.map((task) => (
                 <div key={task.id} className="space-y-2">
-                  <TaskCard task={task} href={`/task/${task.id}`} />
+                  <TaskTodoCard task={task} disabled={updatingTaskId === task.id} onToggle={() => toggleTaskDone(task)} />
                   <div className="rounded-2xl bg-white p-3 text-xs leading-5 text-ink-2 shadow-card">
                     <div className="mb-2 flex flex-wrap gap-1.5">
                       <PriorityBadge priority={task.priority} />
@@ -170,14 +198,14 @@ export function ResultView({ record }: { record: RecordItem }) {
               )}
             </ResultBlock>
             <ResultBlock title="缺失信息">
-              <List items={unique(record.tasks.flatMap((task) => task.missingInfo))} empty="暂无缺失信息。" />
+              <List items={unique(tasks.flatMap((task) => task.missingInfo))} empty="暂无缺失信息。" />
             </ResultBlock>
             <ResultBlock title="建议确认问题">
-              <List items={unique([...record.globalConfirmQuestions, ...record.tasks.flatMap((task) => task.confirmQuestions)])} empty="暂无建议确认问题。" />
+              <List items={unique([...record.globalConfirmQuestions, ...tasks.flatMap((task) => task.confirmQuestions)])} empty="暂无建议确认问题。" />
             </ResultBlock>
             <ResultBlock title="风险提示">
               <List
-                items={unique([...record.warnings, ...(record.tasks.map((task) => task.risk).filter(Boolean) as string[])])}
+                items={unique([...record.warnings, ...(tasks.map((task) => task.risk).filter(Boolean) as string[])])}
                 empty="暂无风险提示。"
               />
             </ResultBlock>
@@ -197,6 +225,62 @@ function ResultBlock({ title, children }: { title: string; children: React.React
       </h2>
       {children}
     </section>
+  );
+}
+
+function TaskTodoCard({ task, disabled, onToggle }: { task: TaskItem; disabled: boolean; onToggle: () => void }) {
+  const done = task.status === "done";
+  return (
+    <div
+      className={`rounded-2xl bg-white p-4 shadow-card transition ${
+        done ? "opacity-70" : ""
+      }`}
+    >
+      <div className="mb-2 flex items-start justify-between gap-3">
+        <button
+          type="button"
+          onClick={() => {
+            window.location.href = `/sheep/task/${task.id}`;
+          }}
+          className="min-w-0 flex-1 text-left"
+        >
+          <h3 className={`min-w-0 text-[16px] font-black leading-snug text-ink ${done ? "line-through decoration-2 opacity-70" : ""}`}>
+            {task.title}
+          </h3>
+        </button>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <button
+            type="button"
+            onClick={onToggle}
+            disabled={disabled}
+            className={`inline-flex h-7 w-7 items-center justify-center rounded-full border transition active:scale-95 ${
+              done
+                ? "border-brand bg-brand text-white shadow-btn"
+                : "border-line bg-white text-transparent hover:border-brand hover:bg-brand-light"
+            } ${disabled ? "cursor-wait opacity-60" : "cursor-pointer"}`}
+            aria-label={done ? "标记为待处理" : "标记为已完成"}
+          >
+            <Check size={15} strokeWidth={3} />
+          </button>
+          <StatusBadge status={task.status} />
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => {
+          window.location.href = `/sheep/task/${task.id}`;
+        }}
+        className="block w-full text-left"
+      >
+        <p className={`line-clamp-2 text-[13px] leading-6 text-ink-2 ${done ? "line-through opacity-65" : ""}`}>{task.description}</p>
+      </button>
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        <TaskLabelList labels={task.labels} limit={1} />
+        <PriorityBadge priority={task.priority} />
+        {task.needConfirm && <Pill tone="light">需确认</Pill>}
+        {task.deadlineText && <Pill tone="muted">{task.deadlineText}</Pill>}
+      </div>
+    </div>
   );
 }
 

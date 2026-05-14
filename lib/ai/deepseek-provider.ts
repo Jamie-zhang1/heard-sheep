@@ -17,13 +17,17 @@ const chatCompletionSchema = z.object({
     .min(1)
 });
 
-export async function analyzeWithMimo(input: AnalyzeInput): Promise<AnalyzeProviderResult> {
-  const baseUrl = (process.env.MIMO_BASE_URL || process.env.BASE_URL || "https://token-plan-cn.xiaomimimo.com/v1").replace(/\/$/, "");
-  const model = process.env.MIMO_MODEL || "mimo-v2.5-pro";
-  const apiKey = process.env.MIMO_API_KEY;
+export async function analyzeWithDeepSeek(input: AnalyzeInput): Promise<AnalyzeProviderResult> {
+  const baseUrl = (
+    process.env.DEEPSEEK_BASE_URL ||
+    process.env.DeepSeek_BASE_URL ||
+    "https://api.deepseek.com"
+  ).replace(/\/$/, "");
+  const model = process.env.DEEPSEEK_MODEL || process.env.DeepSeek_MODEL || "deepseek-v4-flash";
+  const apiKey = process.env.DEEPSEEK_API_KEY || process.env.DeepSeek_API_KEY;
 
   if (!apiKey) {
-    throw new Error("MIMO_API_KEY is not configured");
+    throw new Error("DEEPSEEK_API_KEY is not configured");
   }
 
   const firstOutput = await requestChatCompletion({
@@ -38,7 +42,7 @@ export async function analyzeWithMimo(input: AnalyzeInput): Promise<AnalyzeProvi
     return withMeta(firstParsed.value, model);
   }
 
-  console.warn("[AI] MiMo JSON validation failed, retrying repair", firstParsed.error);
+  console.warn("[AI] DeepSeek JSON validation failed, retrying repair", firstParsed.error);
 
   const repairedOutput = await requestChatCompletion({
     baseUrl,
@@ -52,12 +56,12 @@ export async function analyzeWithMimo(input: AnalyzeInput): Promise<AnalyzeProvi
     return withMeta(repairedParsed.value, model);
   }
 
-  throw new Error(`MiMo output validation failed: ${repairedParsed.error}`);
+  throw new Error(`DeepSeek output validation failed: ${repairedParsed.error}`);
 }
 
 function withMeta(result: AnalyzeResult, model: string): AnalyzeProviderResult {
   const meta = {
-    provider: "mimo" as const,
+    provider: "deepseek" as const,
     model,
     fallbackUsed: false
   };
@@ -111,8 +115,8 @@ async function requestChatCompletion({
   model: string;
   messages: ChatMessage[];
 }) {
-  const timeoutMs = Number(process.env.MIMO_TIMEOUT_MS || 60000);
-  console.log(`[AI] MiMo request: ${baseUrl}/chat/completions, model=${model}, timeout=${timeoutMs}ms`);
+  const timeoutMs = Number(process.env.DEEPSEEK_TIMEOUT_MS || process.env.DeepSeek_TIMEOUT_MS || 60000);
+  console.log(`[AI] DeepSeek request: ${baseUrl}/chat/completions, model=${model}, timeout=${timeoutMs}ms`);
 
   const response = await fetch(`${baseUrl}/chat/completions`, {
     method: "POST",
@@ -125,35 +129,29 @@ async function requestChatCompletion({
       model,
       messages,
       temperature: 0.2,
-      response_format: { type: "json_object" },
-      // Disable thinking mode for structured JSON output
-      // MiMo thinking returns reasoning_content separately which breaks JSON parsing
-      extra_body: { thinking: { type: "disabled" } }
+      response_format: { type: "json_object" }
     })
   });
 
   if (!response.ok) {
     const body = await response.text().catch(() => "");
-    console.error(`[AI] MiMo API error: status=${response.status}, body=${body.slice(0, 500)}`);
-    throw new Error(`MiMo request failed: ${response.status} ${body.slice(0, 300)}`);
+    console.error(`[AI] DeepSeek API error: status=${response.status}, body=${body.slice(0, 500)}`);
+    throw new Error(`DeepSeek request failed: ${response.status} ${body.slice(0, 300)}`);
   }
 
   const json = await response.json();
   const parsed = chatCompletionSchema.safeParse(json);
   if (!parsed.success) {
-    console.error(`[AI] MiMo response shape invalid:`, JSON.stringify(json).slice(0, 500));
-    throw new Error(`MiMo response shape invalid: ${formatZodError(parsed.error)}`);
+    console.error("[AI] DeepSeek response shape invalid:", JSON.stringify(json).slice(0, 500));
+    throw new Error(`DeepSeek response shape invalid: ${formatZodError(parsed.error)}`);
   }
 
   const msg = parsed.data.choices[0].message;
-  // MiMo thinking mode: reasoning_content holds thinking, content holds the answer
-  // If content is empty but reasoning_content exists, the model only returned thinking
   let content = msg.content;
   if (!content && msg.reasoning_content) {
-    console.warn(`[AI] MiMo returned empty content with reasoning_content (${msg.reasoning_content.length} chars)`);
-    // Try to extract JSON from reasoning_content as fallback
+    console.warn(`[AI] DeepSeek returned empty content with reasoning_content (${msg.reasoning_content.length} chars)`);
     content = msg.reasoning_content;
   }
-  console.log(`[AI] MiMo response length: ${content.length} chars`);
+  console.log(`[AI] DeepSeek response length: ${content.length} chars`);
   return content;
 }
