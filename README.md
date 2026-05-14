@@ -165,10 +165,30 @@ data/records.json
 
 `data/` 已在 `.gitignore` 中忽略。清空数据可在「我的 → 账号与隐私」中操作。
 
+## 多模态真实样本评测
+
+项目提供 `npm run eval:multimodal` 脚本，可基于 manifest 批量测试：
+
+- Xiaomi 图片理解 Provider
+- Xiaomi 音频理解 Provider
+
+默认清单在 `eval/multimodal/manifest.example.json`。真实样本放在 `eval/multimodal/samples/`，该目录默认忽略真实素材文件，避免隐私数据被提交。评测结果输出到 `reports/multimodal-eval/`，`reports/` 同样不会提交。
+
+```bash
+npm run eval:multimodal
+```
+
+评测方案和记录模板：
+
+- [多模态真实样本评测方案 v0.5](docs/多模态真实样本评测方案_v0.5.md)
+- [多模态评测记录模板](docs/多模态评测记录模板.md)
+
 ## 文档
 
 - [PRD：听到了咩可开发版](docs/听到了咩_可开发版prd_v_1_0.md)
 - [AI / ASR Provider 接入说明](docs/ai-asr-provider-setup.md)
+- [多模态真实样本评测方案 v0.5](docs/多模态真实样本评测方案_v0.5.md)
+- [多模态评测记录模板](docs/多模态评测记录模板.md)
 - [功能检测报告](docs/功能检测报告_2026-05-13.md)
 
 ## 当前限制

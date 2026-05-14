@@ -4,4 +4,7 @@ node_modules/
 .env.local
 .codex-logs/
 data/
+reports/
+eval/multimodal/samples/*
+!eval/multimodal/samples/.gitkeep
 *.tar.gz

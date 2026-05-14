@@ -355,7 +355,36 @@ POST http://127.0.0.1:3000/sheep/api/transcribe
 POST http://127.0.0.1:3000/sheep/api/vision/extract-text
 ```
 
-## 9. 后续 ASR 扩展建议
+## 9. 真实样本评测建议
+
+图片 Provider 与音频 Provider 已完成真实链路验证，但识别质量仍需要通过更多真实样本持续评估。推荐使用：
+
+```bash
+npm run eval:multimodal
+```
+
+进行批量基线测试。默认读取：
+
+```text
+eval/multimodal/manifest.example.json
+```
+
+评测时重点观察：
+
+- `provider` 是否为 `xiaomi-image` / `xiaomi-audio`；
+- `fallbackUsed` 是否为 `false`；
+- 图片 `extractedText` 或音频 `transcript` 是否非空；
+- 关键词命中率；
+- 人工评级 A/B/C/D。
+
+真实样本请放在 `eval/multimodal/samples/`，该目录默认被 `.gitignore` 忽略，避免隐私素材被提交。脚本输出到 `reports/multimodal-eval/`，报告目录也默认忽略。
+
+配套文档：
+
+- `docs/多模态真实样本评测方案_v0.5.md`
+- `docs/多模态评测记录模板.md`
+
+## 10. 后续 ASR 扩展建议
 
 如果供应商不兼容 OpenAI Audio Transcriptions API，可新增 provider：
 

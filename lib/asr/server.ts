@@ -16,6 +16,7 @@ export async function transcribeAudio(input: TranscribeInput): Promise<Transcrib
       return await openAiCompatibleAsrProvider.transcribe(input);
     }
 
+    // "mimo-audio" is kept only as a legacy alias; new configs should use "xiaomi-audio".
     if (provider === "xiaomi-audio" || provider === "mimo-audio" || provider === "xiaomi-mimo") {
       return await xiaomiAudioProvider.transcribe(input);
     }

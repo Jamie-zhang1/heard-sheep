@@ -1,0 +1,21 @@
+{
+  "baseUrl": "http://127.0.0.1:3000/sheep",
+  "samples": [
+    {
+      "id": "image-chat-001",
+      "type": "image",
+      "filePath": "eval/multimodal/samples/example-chat.png",
+      "description": "聊天截图任务交代",
+      "expectedKeywords": ["周五", "汇报", "修改"],
+      "notes": ""
+    },
+    {
+      "id": "audio-clean-001",
+      "type": "audio",
+      "filePath": "eval/multimodal/samples/example-audio.webm",
+      "description": "清晰普通话短句",
+      "expectedKeywords": ["明天下午", "首页", "周会"],
+      "notes": ""
+    }
+  ]
+}
