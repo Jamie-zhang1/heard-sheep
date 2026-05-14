@@ -46,7 +46,7 @@ async function loadManifest(filePath) {
     throw new Error(`找不到评测清单：${filePath}`);
   }
 
-  const raw = await readFile(filePath, "utf8");
+  const raw = stripBom(await readFile(filePath, "utf8"));
   try {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed.samples)) {
@@ -56,6 +56,10 @@ async function loadManifest(filePath) {
   } catch (error) {
     throw new Error(`评测清单 JSON 解析失败：${error instanceof Error ? error.message : String(error)}`);
   }
+}
+
+function stripBom(value) {
+  return value.charCodeAt(0) === 0xfeff ? value.slice(1) : value;
 }
 
 async function assertServerReachable(baseUrl) {
