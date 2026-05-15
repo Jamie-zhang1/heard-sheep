@@ -16,10 +16,9 @@ const PRECACHE_URLS = [
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches
-      .open(CACHE_NAME)
-      .then((cache) => cache.addAll(PRECACHE_URLS))
-      .catch(() => undefined),
+    caches.open(CACHE_NAME).then((cache) =>
+      Promise.all(PRECACHE_URLS.map((url) => cache.add(url).catch(() => undefined))),
+    ),
   );
   self.skipWaiting();
 });
@@ -57,6 +56,12 @@ self.addEventListener("fetch", (event) => {
   if (!cacheableStatic) return;
 
   event.respondWith(staleWhileRevalidate(request));
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
 
 async function staleWhileRevalidate(request) {

@@ -56,6 +56,8 @@
   --tag-amber: #fef3e2;
   --tag-red: #fdecea;
   --tag-blue: #e8f1fd;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 html,
@@ -63,11 +65,17 @@ body {
   min-height: 100%;
 }
 
+html {
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
   background: #f0ede8;
   color: var(--ink);
   font-family: "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  overscroll-behavior-y: none;
 }
 
 a {
@@ -82,11 +90,27 @@ select {
   font: inherit;
 }
 
+button,
+a,
+[role="button"],
+input,
+textarea,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+input,
+textarea,
+select {
+  scroll-margin-bottom: calc(128px + var(--safe-bottom));
+}
+
 .phone-frame {
   position: relative;
   margin: 0 auto;
   display: flex;
   height: min(812px, 100dvh);
+  min-height: min(812px, 100svh);
   width: min(375px, 100vw);
   flex-direction: column;
   overflow: hidden;
@@ -492,14 +516,18 @@ select {
     border-left: 0;
     border-right: 0;
     height: 100dvh;
+    min-height: 100svh;
     width: 100vw;
+  }
+
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
   }
 }
 
 /* Touch-friendly tap targets (minimum 44px) */
-touch-action: manipulation;
--webkit-tap-highlight-color: transparent;
-
 button, a, [role="button"] {
   min-height: 44px;
   min-width: 44px;
@@ -508,8 +536,30 @@ button, a, [role="button"] {
 /* Safe area for iOS */
 @supports (padding-top: env(safe-area-inset-top)) {
   .phone-frame {
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
+    padding-top: var(--safe-top);
+  }
+}
+
+.safe-bottom-pad {
+  padding-bottom: calc(1.5rem + var(--safe-bottom));
+}
+
+.safe-bottom-pad-sm {
+  padding-bottom: calc(1rem + var(--safe-bottom));
+}
+
+.safe-bottom-nav {
+  height: calc(80px + var(--safe-bottom));
+  padding-bottom: calc(1rem + var(--safe-bottom));
+}
+
+.mobile-sheet {
+  padding-bottom: var(--safe-bottom);
+}
+
+@media (max-width: 420px) {
+  .mobile-overlay {
+    border-radius: 0;
   }
 }
 

@@ -13,7 +13,7 @@ const items: Array<{ key: NavKey; label: string; href: string; icon: typeof Home
 
 export function BottomNav({ active }: { active: NavKey }) {
   return (
-    <nav className="relative z-10 flex h-[80px] shrink-0 border-t border-line bg-white px-0 pb-4 pt-2 shadow-[0_-8px_24px_rgba(26,25,22,0.04)]">
+    <nav className="safe-bottom-nav relative z-10 flex shrink-0 border-t border-line bg-white px-0 pt-2 shadow-[0_-8px_24px_rgba(26,25,22,0.04)]">
       {items.map((item) => {
         const Icon = item.icon;
         const isActive = active === item.key;

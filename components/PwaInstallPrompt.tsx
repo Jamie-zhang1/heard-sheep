@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Download, Share2, X } from "lucide-react";
 import { SheepVisual } from "./SheepVisual";
 
@@ -9,7 +9,8 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 };
 
-const DISMISSED_KEY = "heard-sheep-pwa-install-dismissed";
+export const PWA_INSTALL_DISMISSED_KEY = "heard-sheep-pwa-install-dismissed";
+export const PWA_INSTALL_REQUEST_EVENT = "heard-sheep:request-install";
 
 export function PwaInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
@@ -21,6 +22,24 @@ export function PwaInstallPrompt() {
     return /iphone|ipad|ipod/i.test(navigator.userAgent);
   }, []);
 
+  const requestInstall = useCallback(async () => {
+    window.localStorage.removeItem(PWA_INSTALL_DISMISSED_KEY);
+
+    if (!deferredPrompt) {
+      setVisible(true);
+      return;
+    }
+
+    await deferredPrompt.prompt();
+    const choice = await deferredPrompt.userChoice;
+    setDeferredPrompt(null);
+
+    if (choice.outcome === "accepted") {
+      window.localStorage.setItem(PWA_INSTALL_DISMISSED_KEY, "1");
+      setVisible(false);
+    }
+  }, [deferredPrompt]);
+
   useEffect(() => {
     const standalone =
       window.matchMedia("(display-mode: standalone)").matches ||
@@ -28,51 +47,47 @@ export function PwaInstallPrompt() {
 
     if (standalone) {
       setInstalled(true);
+      setVisible(false);
       return;
     }
 
-    if (window.localStorage.getItem(DISMISSED_KEY) === "1") return;
+    const dismissed = window.localStorage.getItem(PWA_INSTALL_DISMISSED_KEY) === "1";
 
     const onBeforeInstallPrompt = (event: Event) => {
       event.preventDefault();
       setDeferredPrompt(event as BeforeInstallPromptEvent);
-      setVisible(true);
+      if (!dismissed) setVisible(true);
     };
 
     const onInstalled = () => {
       setInstalled(true);
       setVisible(false);
-      window.localStorage.setItem(DISMISSED_KEY, "1");
+      window.localStorage.setItem(PWA_INSTALL_DISMISSED_KEY, "1");
+    };
+
+    const onRequestInstall = () => {
+      void requestInstall();
     };
 
     window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
     window.addEventListener("appinstalled", onInstalled);
+    window.addEventListener(PWA_INSTALL_REQUEST_EVENT, onRequestInstall);
 
-    if (isIos) {
+    if (isIos && !dismissed) {
       setVisible(true);
     }
 
     return () => {
       window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
       window.removeEventListener("appinstalled", onInstalled);
+      window.removeEventListener(PWA_INSTALL_REQUEST_EVENT, onRequestInstall);
     };
-  }, [isIos]);
+  }, [isIos, requestInstall]);
 
   if (installed || !visible) return null;
 
-  async function install() {
-    if (!deferredPrompt) return;
-    await deferredPrompt.prompt();
-    const choice = await deferredPrompt.userChoice;
-    if (choice.outcome === "accepted") {
-      window.localStorage.setItem(DISMISSED_KEY, "1");
-      setVisible(false);
-    }
-    setDeferredPrompt(null);
-  }
-
   function dismiss() {
-    window.localStorage.setItem(DISMISSED_KEY, "1");
+    window.localStorage.setItem(PWA_INSTALL_DISMISSED_KEY, "1");
     setVisible(false);
   }
 
@@ -95,12 +110,12 @@ export function PwaInstallPrompt() {
             </button>
           </div>
           <p className="mt-1 text-xs leading-5 text-muted">
-            添加到主屏幕后，可像普通 App 一样打开《听到了咩》，适合手机真机长期自测。
+            添加到主屏幕后，可以像普通 App 一样打开《听到了咩》，适合手机真机长期自测。
           </p>
           {deferredPrompt ? (
             <button
               type="button"
-              onClick={install}
+              onClick={() => void requestInstall()}
               className="mt-3 inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-brand px-4 text-xs font-bold text-white shadow-btn transition active:scale-[0.99]"
             >
               <Download size={14} />

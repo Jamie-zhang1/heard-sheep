@@ -181,7 +181,8 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      const mimeType = pickRecordingMimeType();
+      const mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
       chunksRef.current = [];
       streamRef.current = stream;
       stoppingRef.current = false;
@@ -189,7 +190,7 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
         if (event.data.size > 0) chunksRef.current.push(event.data);
       };
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: mediaRecorder.mimeType || "audio/webm" });
+        const blob = new Blob(chunksRef.current, { type: mediaRecorder.mimeType || mimeType || "audio/webm" });
         stream.getTracks().forEach((track) => track.stop());
         setRecorder(null);
         if (stoppingRef.current) return;
@@ -265,6 +266,7 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
     interimTextRef.current = "";
 
     // Try browser ASR first
+    const audioName = recordingFileName(blob.type);
     if (sr) {
       try {
         const browserText = await sr.stop();
@@ -274,7 +276,7 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
             text: trimmed,
             source: "recording",
             duration,
-            audioName: "recording.webm",
+            audioName,
             asrMeta: {
               provider: "browser-web-speech",
               fallbackUsed: false
@@ -291,7 +293,7 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
     }
 
     // Fall back to server-side transcription
-    await transcribeAudio(blob, "recording", duration, "recording.webm");
+    await transcribeAudio(blob, "recording", duration, audioName);
   }
 
   async function transcribeAudio(blob: Blob, source: SourceType, duration?: number, audioName?: string) {
@@ -342,10 +344,10 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
       setUploadFile(null);
       return;
     }
-    const allowed = ["mp3", "wav", "m4a", "webm"];
+    const allowed = ["mp3", "wav", "m4a", "webm", "mp4", "ogg", "aac"];
     const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
     if (!allowed.includes(ext)) {
-      setUploadError("仅支持 mp3 / wav / m4a / webm 格式。");
+      setUploadError("仅支持 mp3 / wav / m4a / webm / mp4 / ogg / aac 格式。");
       setUploadFile(null);
       return;
     }
@@ -663,7 +665,7 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
 
       {overlay === "record" && (
         <FullOverlay dark>
-          <div className="flex min-h-0 flex-1 flex-col px-6 pb-10">
+          <div className="flex min-h-0 flex-1 flex-col px-6 safe-bottom-pad">
             <div className="py-4 text-center">
               <div className="flex items-center justify-center gap-2">
                 <span className={`status-dot ${recordingStatus === "recording" ? "status-dot-recording" : "status-dot-paused"}`} />
@@ -752,12 +754,12 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
 
       {overlay === "upload" && (
         <FullOverlay>
-          <PanelHeader title="上传音频" subtitle="支持 mp3 / wav / m4a / webm 格式" onClose={() => setOverlay("none")} />
+          <PanelHeader title="上传音频" subtitle="支持 mp3 / wav / m4a / webm / mp4 / ogg / aac 格式" onClose={() => setOverlay("none")} />
           <div className="px-6">
             <label className="block cursor-pointer rounded-2xl border-2 border-dashed border-brand/40 bg-white px-5 py-10 text-center shadow-card transition hover:bg-brand-light/40 active:scale-[0.99] active:border-brand">
               <input
                 type="file"
-                accept=".mp3,.wav,.m4a,.webm,audio/*"
+                accept=".mp3,.wav,.m4a,.webm,.mp4,.ogg,.aac,audio/*"
                 className="hidden"
                 onChange={(event) => handleUploadFile(event.target.files?.[0] ?? null)}
               />
@@ -774,7 +776,7 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
             {uploadError && <p className="mt-3 text-xs font-semibold text-ink">{uploadError}</p>}
           </div>
           <div className="flex-1" />
-          <div className="flex gap-2 px-6 pb-6">
+          <div className="safe-bottom-pad flex gap-2 px-6">
             <button onClick={() => setOverlay("none")} className="rounded-xl px-4 py-3 text-sm font-semibold text-muted transition active:bg-surface-2">
               取消
             </button>
@@ -825,7 +827,7 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
             </button>
           </div>
           <div className="flex-1" />
-          <div className="flex gap-2 px-6 pb-6">
+          <div className="safe-bottom-pad flex gap-2 px-6">
             <button onClick={() => setOverlay("none")} className="rounded-xl px-4 py-3 text-sm font-semibold text-muted transition active:bg-surface-2">
               取消
             </button>
@@ -855,6 +857,16 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
               <p className="text-sm font-semibold text-muted">选择或拖拽图片</p>
               <p className="mt-1 text-[11px] text-neutral-400">支持多选，最多 9 张，PNG / JPG / WebP</p>
             </label>
+            <label className="mt-2 inline-flex min-h-10 cursor-pointer items-center justify-center rounded-full border border-line bg-white px-4 text-xs font-bold text-muted transition active:bg-surface-2">
+              手机拍照上传
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={(event) => handleImageFiles(event.target.files)}
+              />
+            </label>
             {imagePreviews.length > 0 && (
               <div className="mt-4 grid grid-cols-3 gap-2">
                 {imagePreviews.map((preview, index) => (
@@ -880,7 +892,7 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
             {imageError && <p className="mt-3 text-xs font-semibold text-ink">{imageError}</p>}
           </div>
           <div className="flex-1" />
-          <div className="flex gap-2 px-6 pb-6">
+          <div className="safe-bottom-pad flex gap-2 px-6">
             <button onClick={() => { setOverlay("none"); setImageFiles([]); setImagePreviews([]); }} className="rounded-xl px-4 py-3 text-sm font-semibold text-muted transition active:bg-surface-2">
               取消
             </button>
@@ -928,7 +940,7 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
             )}
           </div>
           <div className="flex-1" />
-          <div className="flex gap-2 px-6 pb-6">
+          <div className="safe-bottom-pad flex gap-2 px-6">
             <button
               onClick={() => setOverlay("image")}
               className="rounded-xl px-4 py-3 text-sm font-semibold text-muted transition active:bg-surface-2"
@@ -980,7 +992,7 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
             />
           </div>
           <div className="flex-1" />
-          <div className="space-y-2 px-6 pb-6">
+          <div className="safe-bottom-pad space-y-2 px-6">
             <button onClick={() => analyzeAndSave()} className="w-full rounded-xl bg-brand px-4 py-3 text-sm font-bold text-white shadow-btn transition active:scale-[0.99]">
               确认并生成任务
             </button>
@@ -1077,7 +1089,7 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
 
 function FullOverlay({ children, dark = false }: { children: React.ReactNode; dark?: boolean }) {
   return (
-    <div className={`absolute inset-0 z-30 flex flex-col overflow-hidden rounded-[30px] ${dark ? "bg-gradient-to-br from-ink to-[#322b66] text-white" : "bg-paper text-ink"}`}>
+    <div className={`mobile-overlay absolute inset-0 z-30 flex flex-col overflow-hidden rounded-[30px] ${dark ? "bg-gradient-to-br from-ink to-[#322b66] text-white" : "bg-paper text-ink"}`}>
       {children}
     </div>
   );
@@ -1171,6 +1183,31 @@ function ErrorOverlay({
       </div>
     </FullOverlay>
   );
+}
+
+function pickRecordingMimeType() {
+  if (typeof MediaRecorder === "undefined" || typeof MediaRecorder.isTypeSupported !== "function") {
+    return "";
+  }
+
+  return (
+    [
+      "audio/webm;codecs=opus",
+      "audio/webm",
+      "audio/mp4",
+      "audio/ogg;codecs=opus",
+      "audio/ogg"
+    ].find((type) => MediaRecorder.isTypeSupported(type)) ?? ""
+  );
+}
+
+function recordingFileName(mimeType?: string) {
+  const type = mimeType?.toLowerCase() ?? "";
+  if (type.includes("mp4")) return "recording.mp4";
+  if (type.includes("ogg")) return "recording.ogg";
+  if (type.includes("mpeg")) return "recording.mp3";
+  if (type.includes("wav")) return "recording.wav";
+  return "recording.webm";
 }
 
 function formatTimer(seconds: number) {

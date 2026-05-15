@@ -213,3 +213,21 @@ npm run start
 项目使用原创小羊 mascot 作为品牌识别，并在 v0.6 建立了等待、成功、错误、空状态、鼓励等状态的统一视觉资产映射。页面内的小羊图片应优先通过 `SheepVisual` 和 `lib/sheep-assets.ts` 使用，避免直接硬编码素材路径。
 
 参考：[小羊视觉资产使用说明 v0.6](docs/小羊视觉资产使用说明_v0.6.md)
+## 手机端自测版 / PWA
+
+项目已进入 V0.6 手机端自测阶段，可部署为公网 HTTPS 下的可安装 PWA。默认访问路径仍为 `/sheep`，根路径 `/` 会重定向到 `/sheep`。
+
+已补齐：
+
+- Manifest：应用名、描述、主题色、`start_url=/sheep`、`scope=/sheep/`。
+- PWA 图标：新版小羊 favicon、Apple touch icon、192/512/maskable icons。
+- Service Worker：静态资源最小缓存，`/sheep/api/*` 不缓存。
+- 安装入口：首页 / 我的页提供“安装到手机”引导。
+- 手机适配：底部安全区、弹层安全区、输入框键盘遮挡、触控目标、录音 MIME 兼容。
+
+部署与真机测试请参考：
+
+- [手机自测版部署指南 v0.6](docs/手机自测版部署指南_v0.6.md)
+- [手机端真机验收清单 v0.6](docs/手机端真机验收清单_v0.6.md)
+
+注意：当前 Vercel 部署适合个人自测与流程验证；项目仍使用 `data/records.json` 本地 JSON 文件存储，在 Serverless 生产环境中不保证长期持久化。

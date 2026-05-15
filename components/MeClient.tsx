@@ -14,13 +14,14 @@ import {
   Mic,
   Shield,
   SlidersHorizontal,
+  Smartphone,
   Star,
   Trash2,
   TrendingUp,
   X,
   type LucideIcon
 } from "lucide-react";
-import { PwaInstallPrompt } from "./PwaInstallPrompt";
+import { PWA_INSTALL_DISMISSED_KEY, PWA_INSTALL_REQUEST_EVENT, PwaInstallPrompt } from "./PwaInstallPrompt";
 import { SheepVisual } from "./SheepVisual";
 import { apiPath } from "@/lib/api-path";
 import type { RecordItem } from "@/lib/types";
@@ -34,6 +35,7 @@ type Sheet =
   | "clear-confirm"
   | "notify"
   | "quality"
+  | "install"
   | "pro"
   | "help"
   | "rating"
@@ -134,6 +136,13 @@ export function MeClient({ initialRecords }: { initialRecords: RecordItem[] }) {
     router.refresh();
   }
 
+  function requestInstallGuide() {
+    window.localStorage.removeItem(PWA_INSTALL_DISMISSED_KEY);
+    window.dispatchEvent(new Event(PWA_INSTALL_REQUEST_EVENT));
+    setSheet("none");
+    showToast("已打开安装引导");
+  }
+
   return (
     <>
       <main className="safe-scroll px-5 pb-5">
@@ -183,6 +192,7 @@ export function MeClient({ initialRecords }: { initialRecords: RecordItem[] }) {
         </SettingGroup>
 
         <SettingGroup title="账号与帮助">
+          <Setting icon={Smartphone} title="安装到手机" value="PWA" onClick={() => setSheet("install")} />
           <Setting icon={Shield} title="账号与隐私" value="本地 MVP" onClick={() => setSheet("privacy")} />
           <Setting icon={Star} title="会员升级" value="解锁更多能力" onClick={() => setSheet("pro")} />
           <Setting icon={HelpCircle} title="使用帮助" value="" onClick={() => setSheet("help")} />
@@ -192,7 +202,7 @@ export function MeClient({ initialRecords }: { initialRecords: RecordItem[] }) {
       </main>
 
       {toast && (
-        <div className="absolute bottom-[92px] left-1/2 z-50 inline-flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full bg-ink px-4 py-2 text-xs font-bold text-white shadow-sheep">
+        <div className="absolute bottom-[calc(92px+var(--safe-bottom))] left-1/2 z-50 inline-flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full bg-ink px-4 py-2 text-xs font-bold text-white shadow-sheep">
           <SheepVisual variant="success" size="xs" decorative motion="none" />
           {toast}
         </div>
@@ -200,7 +210,7 @@ export function MeClient({ initialRecords }: { initialRecords: RecordItem[] }) {
 
       {sheet !== "none" && (
         <div className="absolute inset-0 z-40 flex items-end bg-black/30">
-          <div className="flex max-h-[78vh] w-full flex-col rounded-t-[32px] bg-white shadow-sheep">
+          <div className="mobile-sheet flex max-h-[78vh] w-full flex-col rounded-t-[32px] bg-white shadow-sheep">
             <div className="mx-auto mt-3 h-1 w-9 rounded bg-line" />
 
             {sheet === "model" && (
@@ -312,6 +322,25 @@ export function MeClient({ initialRecords }: { initialRecords: RecordItem[] }) {
                   当前仍使用浏览器 MediaRecorder，质量选项先作为原型交互保留，后续接真实录音参数。
                 </p>
                 <SheetActions primary="保存" onPrimary={saveQuality} secondary="取消" onSecondary={() => setSheet("none")} />
+              </SheetBody>
+            )}
+
+            {sheet === "install" && (
+              <SheetBody title="安装到手机" onClose={() => setSheet("none")}>
+                <div className="rounded-2xl border border-brand-light bg-brand-light/50 p-4 text-center">
+                  <div className="mx-auto mb-2 flex h-16 w-16 items-center justify-center rounded-3xl bg-white shadow-card">
+                    <SheepVisual variant="cheer" size="md" decorative motion="bounce" />
+                  </div>
+                  <div className="text-sm font-black text-ink">把《听到了咩》放到主屏幕</div>
+                  <p className="mt-1 text-xs leading-5 text-muted">
+                    Android Chrome 支持时可直接触发安装；iPhone Safari 请点击分享按钮，再选择“添加到主屏幕”。
+                  </p>
+                </div>
+                <div className="mt-3 space-y-2">
+                  <FeatureSoon title="iPhone Safari：分享 → 添加到主屏幕" />
+                  <FeatureSoon title="Android Chrome：菜单 → 安装应用" />
+                </div>
+                <SheetActions primary="打开安装引导" onPrimary={requestInstallGuide} secondary="知道了" onSecondary={() => setSheet("none")} />
               </SheetBody>
             )}
 
@@ -503,7 +532,7 @@ function SheetBody({ title, onClose, children }: { title: string; onClose: () =>
           <X size={20} />
         </button>
       </div>
-      <div className="safe-scroll px-6 pb-6">{children}</div>
+      <div className="safe-scroll px-6 safe-bottom-pad">{children}</div>
     </>
   );
 }
