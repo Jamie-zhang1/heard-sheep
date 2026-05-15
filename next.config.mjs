@@ -1,10 +1,12 @@
 /** @type {import('next').NextConfig} */
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "/sheep";
+const standaloneOutput = process.env.NEXT_OUTPUT_STANDALONE === "true";
 
 const nextConfig = {
   typedRoutes: false,
   basePath,
   assetPrefix: basePath,
+  ...(standaloneOutput ? { output: "standalone" } : {}),
   async redirects() {
     return [
       {

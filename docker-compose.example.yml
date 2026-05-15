@@ -1,0 +1,17 @@
+services:
+  heard-sheep:
+    build:
+      context: .
+    image: heard-sheep:latest
+    container_name: heard-sheep
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      NEXT_PUBLIC_BASE_PATH: /sheep
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data

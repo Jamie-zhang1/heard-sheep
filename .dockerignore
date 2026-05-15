@@ -1,0 +1,12 @@
+node_modules
+.next
+.git
+.env*
+!.env.example
+.codex-logs
+data
+reports
+docs/各种图标
+eval/multimodal/samples/*
+*.tar.gz
+npm-debug.log*
