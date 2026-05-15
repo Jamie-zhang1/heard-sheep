@@ -1,6 +1,6 @@
 import clsx from "clsx";
 import { BottomNav } from "./BottomNav";
-import { SheepIcon } from "./SheepIcon";
+import { SheepVisual } from "./SheepVisual";
 
 type PhoneShellProps = {
   active?: "home" | "tasks" | "history" | "me";
@@ -14,25 +14,25 @@ export function PhoneShell({ active = "home", children, hideNav = false, dark = 
     <main className={clsx("phone-frame", dark && "phone-frame-dark")}>
       <div className="sheep-wallpaper" aria-hidden="true" />
       <div className="sheep-orbit sheep-orbit-a">
-        <SheepIcon variant="floating" />
+        <SheepVisual variant="floating" decorative motion="float" />
       </div>
       <div className="sheep-orbit sheep-orbit-b">
-        <SheepIcon variant="floating" />
+        <SheepVisual variant="floating" decorative motion="float" />
       </div>
       <div className="sheep-orbit sheep-orbit-c">
-        <SheepIcon variant="floating" />
+        <SheepVisual variant="floating" decorative motion="float" />
       </div>
       <div className="sheep-orbit sheep-orbit-d">
-        <SheepIcon variant="floating" />
+        <SheepVisual variant="floating" decorative motion="float" />
       </div>
       <div className="sheep-bg sheep-bg-a -right-3 top-[8%] w-20">
-        <SheepIcon variant="floating" />
+        <SheepVisual variant="floating" decorative motion="float" />
       </div>
       <div className="sheep-bg sheep-bg-b -left-3 bottom-[26%] w-16">
-        <SheepIcon variant="floating" />
+        <SheepVisual variant="floating" decorative motion="float" />
       </div>
       <div className="sheep-bg sheep-bg-c right-10 top-[57%] w-14">
-        <SheepIcon variant="sleepy" />
+        <SheepVisual variant="empty" decorative motion="soft" />
       </div>
       <StatusBar />
       <section className="relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden">{children}</section>

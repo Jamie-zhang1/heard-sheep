@@ -20,7 +20,8 @@ import {
   X,
   type LucideIcon
 } from "lucide-react";
-import { SheepIcon } from "./SheepIcon";
+import { PwaInstallPrompt } from "./PwaInstallPrompt";
+import { SheepVisual } from "./SheepVisual";
 import { apiPath } from "@/lib/api-path";
 import type { RecordItem } from "@/lib/types";
 
@@ -139,7 +140,7 @@ export function MeClient({ initialRecords }: { initialRecords: RecordItem[] }) {
         <section className="relative mb-5 mt-2 flex flex-col items-center overflow-hidden rounded-3xl border border-brand-light bg-gradient-to-br from-brand-light/50 to-white px-6 pb-5 pt-7 shadow-card">
           <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-brand/10" />
           <div className="relative mb-3 drop-shadow-[0_8px_18px_rgba(124,111,247,0.15)]">
-            <SheepIcon variant="front" className="h-24 w-24" />
+            <SheepVisual variant="mascot" size="lg" decorative />
           </div>
           <div className="text-lg font-bold text-ink">职场小羊</div>
           <div className="mt-1 text-[13px] text-muted">已使用 听到了咩 {activeDays} 天</div>
@@ -154,6 +155,8 @@ export function MeClient({ initialRecords }: { initialRecords: RecordItem[] }) {
           <Stat value={tasks.length} label="全部任务" icon={CheckSquare} onClick={() => router.push("/tasks?filter=all")} />
           <Stat value={done} label="已完成" icon={TrendingUp} onClick={() => router.push("/tasks?filter=done")} />
         </section>
+
+        <PwaInstallPrompt />
 
         <section className="mb-5 rounded-2xl bg-white p-4 shadow-card">
           <div className="mb-3 flex items-center justify-between">
@@ -189,7 +192,8 @@ export function MeClient({ initialRecords }: { initialRecords: RecordItem[] }) {
       </main>
 
       {toast && (
-        <div className="absolute bottom-[92px] left-1/2 z-50 -translate-x-1/2 whitespace-nowrap rounded-full bg-ink px-4 py-2 text-xs font-bold text-white shadow-sheep">
+        <div className="absolute bottom-[92px] left-1/2 z-50 inline-flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full bg-ink px-4 py-2 text-xs font-bold text-white shadow-sheep">
+          <SheepVisual variant="success" size="xs" decorative motion="none" />
           {toast}
         </div>
       )}

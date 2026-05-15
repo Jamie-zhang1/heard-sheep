@@ -5,6 +5,7 @@ node_modules/
 .codex-logs/
 data/
 reports/
+docs/各种图标/
 eval/multimodal/samples/*
 !eval/multimodal/samples/.gitkeep
 *.tar.gz

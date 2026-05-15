@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  AlertTriangle,
   CheckCircle2,
   FileAudio,
   FileText,
@@ -15,7 +14,8 @@ import {
   Upload,
   X
 } from "lucide-react";
-import { SheepIcon } from "./SheepIcon";
+import { PwaInstallPrompt } from "./PwaInstallPrompt";
+import { SheepVisual } from "./SheepVisual";
 import { EmptyState, RecordRow, SectionTitle } from "./ui";
 import { formatBytes, formatDuration } from "@/lib/format";
 import { createSpeechRecognition, isBrowserAsrAvailable } from "@/lib/asr/client";
@@ -581,7 +581,7 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
           <div className="mb-5 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-light">
-                <SheepIcon variant="front" className="h-10 w-10" />
+                <SheepVisual variant="mascot" size="sm" decorative />
               </div>
               <div>
                 <h1 className="text-base font-bold tracking-tight text-ink">听到了咩</h1>
@@ -641,6 +641,8 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
             识别图片
           </button>
         </div>
+
+        <PwaInstallPrompt />
 
         <SectionTitle
           title="最近任务"
@@ -1107,7 +1109,7 @@ function ProcessingOverlay({
   return (
     <FullOverlay>
       <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
-        <SheepIcon variant="thinking" className="mb-6 h-28 w-28 processing-dot" />
+        <SheepVisual variant="thinking" size="lg" className="mb-6 processing-dot" motion="thinking" />
         <div className="text-base font-bold">{title}</div>
         <div className="mb-6 mt-2 text-[13px] text-muted">{subtitle}</div>
         <div className="mb-4 w-full max-w-[280px] overflow-hidden rounded-full bg-surface-2">
@@ -1152,13 +1154,10 @@ function ErrorOverlay({
   onSecondary: () => void;
   icon: "mic" | "warn" | "fail" | "ok";
 }) {
-  const Icon = icon === "mic" ? Mic : icon === "ok" ? CheckCircle2 : icon === "fail" ? X : AlertTriangle;
   return (
     <FullOverlay>
       <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
-        <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-brand-light text-brand shadow-card">
-          <Icon size={28} />
-        </div>
+        <SheepVisual variant={icon === "ok" ? "success" : icon === "mic" ? "question" : "error"} size="lg" className="mb-5" motion={icon === "ok" ? "bounce" : "soft"} />
         <div className="text-base font-bold">{title}</div>
         <p className="mb-6 mt-2 max-w-[280px] text-[13px] leading-6 text-muted">{description}</p>
         <div className="w-full max-w-[260px] space-y-2">

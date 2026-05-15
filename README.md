@@ -207,3 +207,9 @@ npm run typecheck
 npm run build
 npm run start
 ```
+
+## 品牌视觉
+
+项目使用原创小羊 mascot 作为品牌识别，并在 v0.6 建立了等待、成功、错误、空状态、鼓励等状态的统一视觉资产映射。页面内的小羊图片应优先通过 `SheepVisual` 和 `lib/sheep-assets.ts` 使用，避免直接硬编码素材路径。
+
+参考：[小羊视觉资产使用说明 v0.6](docs/小羊视觉资产使用说明_v0.6.md)

@@ -4,7 +4,7 @@ import { ChevronRight } from "lucide-react";
 import { formatDateTime, priorityLabel, statusLabel } from "@/lib/format";
 import { getTaskLabel, getTaskLabelName, primaryLabelId } from "@/lib/labels";
 import type { RecordItem, TaskItem } from "@/lib/types";
-import { SheepIcon } from "./SheepIcon";
+import { SheepVisual } from "./SheepVisual";
 
 type PillTone = "dark" | "light" | "outline" | "muted";
 
@@ -50,7 +50,7 @@ export function LabelPill({
 
   const content = (
     <>
-      {isSystem && <SheepIcon variant={id === "sheep_done" ? "sleepy" : "tiny"} className="h-4 w-4 shrink-0" />}
+      {isSystem && <SheepVisual variant={id === "sheep_done" ? "cheer" : id === "sheep_warn" ? "question" : "mascot"} size="xs" className="shrink-0" decorative motion="none" />}
       <span>{getTaskLabelName(id)}</span>
     </>
   );
@@ -192,7 +192,7 @@ export function RecordRow({ record, href, showProgress = false }: { record: Reco
 export function EmptyState({ title, description }: { title: string; description: string }) {
   return (
     <div className="mx-6 my-8 rounded-2xl border border-dashed border-line bg-white p-6 text-center shadow-card">
-      <SheepIcon variant="sleepy" className="mx-auto mb-3 h-20 w-20 opacity-95" />
+      <SheepVisual variant="empty" size="md" className="mx-auto mb-3 opacity-95" motion="soft" />
       <div className="text-sm font-bold">{title}</div>
       <p className="mt-2 text-xs leading-5 text-muted">{description}</p>
     </div>

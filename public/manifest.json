@@ -1,21 +1,39 @@
 {
   "name": "听到了咩",
   "short_name": "听到了咩",
-  "description": "以录音为主入口的 AI 语音任务助手",
+  "description": "把口头交代、语音和截图整理成可执行任务。",
+  "start_url": "/sheep",
+  "scope": "/sheep/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F7F3ED",
+  "theme_color": "#8B78FF",
   "icons": [
     {
-      "src": "/sheep/icon-192.png",
+      "src": "/sheep/icons/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "/sheep/icon-512.png",
+      "src": "/sheep/icons/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/sheep/icons/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/sheep/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
-  "theme_color": "#8B7FF8",
-  "background_color": "#F5F0FF",
-  "display": "standalone",
-  "start_url": "/sheep"
+  "categories": ["productivity", "utilities"],
+  "lang": "zh-CN"
 }

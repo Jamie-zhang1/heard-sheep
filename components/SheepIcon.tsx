@@ -1,4 +1,5 @@
-import clsx from "clsx";
+import { SheepVisual } from "./SheepVisual";
+import type { SheepVisualVariant } from "./SheepVisual";
 
 export type SheepVariant = "front" | "sleepy" | "floating" | "recording" | "thinking" | "tiny";
 
@@ -7,30 +8,31 @@ type SheepIconProps = {
   variant?: SheepVariant;
 };
 
-const sheepImage = "/sheep/brand/sheep-mascot-main-v1.png";
+const legacyVariantMap: Record<SheepVariant, SheepVisualVariant> = {
+  front: "mascot",
+  sleepy: "empty",
+  floating: "floating",
+  recording: "recording",
+  thinking: "thinking",
+  tiny: "mascot",
+};
+
+const legacyMotionMap: Record<SheepVariant, "none" | "soft" | "float" | "bounce" | "thinking"> = {
+  front: "soft",
+  sleepy: "soft",
+  floating: "float",
+  recording: "bounce",
+  thinking: "thinking",
+  tiny: "soft",
+};
 
 export function SheepIcon({ className, variant = "front" }: SheepIconProps) {
   return (
-    <span
-      className={clsx(
-        "relative inline-flex items-center justify-center overflow-visible",
-        "sheep-icon-motion",
-        variant === "front" && "sheep-motion-front",
-        variant === "floating" && "sheep-motion-floating",
-        variant === "thinking" && "sheep-motion-thinking sheep-thinking-soft",
-        variant === "sleepy" && "sheep-motion-sleepy",
-        variant === "tiny" && "sheep-motion-tiny",
-        variant === "recording" && "sheep-motion-recording",
-        className
-      )}
-      aria-hidden="true"
-    >
-      <img
-        src={sheepImage}
-        alt=""
-        draggable={false}
-        className="h-full w-full select-none object-contain object-center sheep-image-center"
-      />
-    </span>
+    <SheepVisual
+      variant={legacyVariantMap[variant]}
+      motion={legacyMotionMap[variant]}
+      className={className}
+      decorative
+    />
   );
 }
