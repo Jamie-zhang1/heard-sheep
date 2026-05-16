@@ -1,9 +1,12 @@
-const CACHE_NAME = "heard-sheep-static-v0.6.0";
+const CACHE_NAME = "heard-sheep-static-v0.6.2";
 const APP_BASE_PATH = "/sheep";
 
 const PRECACHE_URLS = [
   `${APP_BASE_PATH}/manifest.json`,
+  `${APP_BASE_PATH}/favicon.ico`,
   `${APP_BASE_PATH}/favicon.png`,
+  `${APP_BASE_PATH}/favicon-16x16.png`,
+  `${APP_BASE_PATH}/favicon-32x32.png`,
   `${APP_BASE_PATH}/apple-touch-icon.png`,
   `${APP_BASE_PATH}/icons/icon-192.png`,
   `${APP_BASE_PATH}/icons/icon-512.png`,
@@ -50,7 +53,10 @@ self.addEventListener("fetch", (event) => {
     url.pathname.startsWith(`${APP_BASE_PATH}/icons/`) ||
     url.pathname.startsWith(`${APP_BASE_PATH}/brand/`) ||
     url.pathname === `${APP_BASE_PATH}/manifest.json` ||
+    url.pathname.endsWith("/favicon.ico") ||
     url.pathname.endsWith("/favicon.png") ||
+    url.pathname.endsWith("/favicon-16x16.png") ||
+    url.pathname.endsWith("/favicon-32x32.png") ||
     url.pathname.endsWith("/apple-touch-icon.png");
 
   if (!cacheableStatic) return;
@@ -69,7 +75,7 @@ async function staleWhileRevalidate(request) {
   const cached = await cache.match(request);
   const network = fetch(request)
     .then((response) => {
-      if (response && response.ok) {
+      if (isSafeStaticResponse(request, response)) {
         cache.put(request, response.clone()).catch(() => undefined);
       }
       return response;
@@ -77,4 +83,27 @@ async function staleWhileRevalidate(request) {
     .catch(() => cached);
 
   return cached || network;
+}
+
+function isSafeStaticResponse(request, response) {
+  if (!response || !response.ok) return false;
+  const url = new URL(request.url);
+  const contentType = response.headers.get("content-type") || "";
+
+  if (url.pathname.endsWith(".png") || url.pathname.endsWith(".ico")) {
+    return contentType.startsWith("image/");
+  }
+  if (url.pathname.endsWith(".json")) {
+    return contentType.includes("application/json");
+  }
+  if (url.pathname.includes("/_next/static/")) {
+    return (
+      contentType.includes("javascript") ||
+      contentType.includes("text/css") ||
+      contentType.includes("font/") ||
+      contentType.startsWith("image/")
+    );
+  }
+
+  return true;
 }
