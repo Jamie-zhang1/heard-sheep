@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Check, ChevronRight, ClipboardList, Info, Route, Text } from "lucide-react";
-import { Pill, PriorityBadge, StatusBadge, TaskLabelList } from "./ui";
+import { ConfirmationBadge, Pill, PriorityBadge, StatusBadge, TaskLabelList, confirmationIssueCount } from "./ui";
 import { formatDateTime, formatDuration } from "@/lib/format";
 import { apiPath } from "@/lib/api-path";
 import type { RecordItem, TaskItem } from "@/lib/types";
@@ -156,14 +156,14 @@ export function ResultView({ record }: { record: RecordItem }) {
                   <div className="rounded-2xl bg-white p-3 text-xs leading-5 text-ink-2 shadow-card">
                     <div className="mb-2 flex flex-wrap gap-1.5">
                       <PriorityBadge priority={task.priority} />
-                      {task.needConfirm && <Pill tone="light">需确认</Pill>}
+                      <ConfirmationBadge task={task} />
                       {task.deadlineText && <Pill tone="light">{task.deadlineText}</Pill>}
                     </div>
                     <div className="rounded-xl border-l-[3px] border-brand bg-brand-light/45 px-3 py-2 italic">
                       {task.sourceEvidence}
                     </div>
-                    <button onClick={() => router.push(`/task/${task.id}`)} className="mt-2 flex items-center gap-1 font-bold text-brand">
-                      查看依据与详情 <ChevronRight size={14} />
+                    <button onClick={() => router.push(task.needConfirm ? `/task/${task.id}#confirm` : `/task/${task.id}`)} className="mt-2 flex items-center gap-1 font-bold text-brand">
+                      {task.needConfirm ? "查看待确认问题" : "查看依据与详情"} <ChevronRight size={14} />
                     </button>
                   </div>
                 </div>
@@ -230,6 +230,9 @@ function ResultBlock({ title, children }: { title: string; children: React.React
 
 function TaskTodoCard({ task, disabled, onToggle }: { task: TaskItem; disabled: boolean; onToggle: () => void }) {
   const done = task.status === "done";
+  const confirmCount = confirmationIssueCount(task);
+  const taskHref = `/sheep/task/${task.id}`;
+  const confirmHref = `${taskHref}#confirm`;
   return (
     <div
       className={`rounded-2xl bg-white p-4 shadow-card transition ${
@@ -240,7 +243,7 @@ function TaskTodoCard({ task, disabled, onToggle }: { task: TaskItem; disabled: 
         <button
           type="button"
           onClick={() => {
-            window.location.href = `/sheep/task/${task.id}`;
+            window.location.href = taskHref;
           }}
           className="min-w-0 flex-1 text-left"
         >
@@ -253,7 +256,7 @@ function TaskTodoCard({ task, disabled, onToggle }: { task: TaskItem; disabled: 
             type="button"
             onClick={onToggle}
             disabled={disabled}
-            className={`inline-flex h-7 w-7 items-center justify-center rounded-full border transition active:scale-95 ${
+            className={`inline-flex !h-7 !min-h-7 !w-7 !min-w-7 items-center justify-center rounded-full border p-0 transition active:scale-95 ${
               done
                 ? "border-brand bg-brand text-white shadow-btn"
                 : "border-line bg-white text-transparent hover:border-brand hover:bg-brand-light"
@@ -268,7 +271,7 @@ function TaskTodoCard({ task, disabled, onToggle }: { task: TaskItem; disabled: 
       <button
         type="button"
         onClick={() => {
-          window.location.href = `/sheep/task/${task.id}`;
+          window.location.href = taskHref;
         }}
         className="block w-full text-left"
       >
@@ -277,7 +280,20 @@ function TaskTodoCard({ task, disabled, onToggle }: { task: TaskItem; disabled: 
       <div className="mt-3 flex flex-wrap gap-1.5">
         <TaskLabelList labels={task.labels} limit={1} />
         <PriorityBadge priority={task.priority} />
-        {task.needConfirm && <Pill tone="light">需确认</Pill>}
+        {task.needConfirm && (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              window.location.href = confirmHref;
+            }}
+            className="inline-flex !h-7 !min-h-7 !min-w-0 items-center justify-center gap-0.5 whitespace-nowrap rounded-full bg-tag-blue px-2.5 text-[11px] font-semibold leading-none text-[#1D6FB8] transition active:scale-[0.98] active:bg-brand-light"
+            aria-label="查看待确认问题"
+          >
+            去确认{confirmCount ? ` ${confirmCount}项` : ""}
+            <ChevronRight size={12} />
+          </button>
+        )}
         {task.deadlineText && <Pill tone="muted">{task.deadlineText}</Pill>}
       </div>
     </div>

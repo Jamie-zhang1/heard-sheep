@@ -103,7 +103,7 @@ export function PwaInstallPrompt() {
             <button
               type="button"
               onClick={dismiss}
-              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted transition active:bg-surface-2"
+              className="inline-flex !h-8 !min-h-8 !w-8 !min-w-8 shrink-0 items-center justify-center rounded-full p-0 text-muted transition active:bg-surface-2"
               aria-label="关闭安装提示"
             >
               <X size={15} />

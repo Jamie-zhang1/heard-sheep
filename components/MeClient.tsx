@@ -18,11 +18,11 @@ import {
   Star,
   Trash2,
   TrendingUp,
-  X,
   type LucideIcon
 } from "lucide-react";
 import { PWA_INSTALL_DISMISSED_KEY, PWA_INSTALL_REQUEST_EVENT, PwaInstallPrompt } from "./PwaInstallPrompt";
 import { SheepVisual } from "./SheepVisual";
+import { CloseButton } from "./ui";
 import { apiPath } from "@/lib/api-path";
 import type { RecordItem } from "@/lib/types";
 
@@ -528,9 +528,7 @@ function SheetBody({ title, onClose, children }: { title: string; onClose: () =>
     <>
       <div className="flex items-center justify-between px-6 py-3">
         <div className="text-base font-black">{title}</div>
-        <button onClick={onClose} className="text-muted" aria-label="关闭">
-          <X size={20} />
-        </button>
+        <CloseButton onClick={onClose} className="h-10 w-10 bg-transparent hover:bg-surface-2 active:bg-surface-2" />
       </div>
       <div className="safe-scroll px-6 safe-bottom-pad">{children}</div>
     </>

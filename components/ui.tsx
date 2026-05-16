@@ -1,12 +1,36 @@
 import Link from "next/link";
 import clsx from "clsx";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, X } from "lucide-react";
 import { formatDateTime, priorityLabel, statusLabel } from "@/lib/format";
 import { getTaskLabel, getTaskLabelName, primaryLabelId } from "@/lib/labels";
 import type { RecordItem, TaskItem } from "@/lib/types";
 import { SheepVisual } from "./SheepVisual";
 
 type PillTone = "dark" | "light" | "outline" | "muted";
+
+export function CloseButton({
+  onClick,
+  ariaLabel = "关闭",
+  className,
+}: {
+  onClick: () => void;
+  ariaLabel?: string;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={ariaLabel}
+      className={clsx(
+        "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface-2 p-0 leading-none text-muted transition hover:bg-line/70 active:scale-95",
+        className
+      )}
+    >
+      <X size={18} strokeWidth={2.2} className="block" aria-hidden="true" />
+    </button>
+  );
+}
 
 export function Pill({
   children,
@@ -129,6 +153,21 @@ export function StatusBadge({ status }: { status: TaskItem["status"] }) {
   );
 }
 
+export function confirmationIssueCount(task: Pick<TaskItem, "missingInfo" | "confirmQuestions" | "needConfirm">) {
+  if (!task.needConfirm) return 0;
+  return new Set([...task.missingInfo, ...task.confirmQuestions].filter(Boolean)).size;
+}
+
+export function ConfirmationBadge({ task }: { task: Pick<TaskItem, "missingInfo" | "confirmQuestions" | "needConfirm"> }) {
+  if (!task.needConfirm) return null;
+  const count = confirmationIssueCount(task);
+  return (
+    <Pill tone="light">
+      待确认{count ? ` ${count}项` : ""}
+    </Pill>
+  );
+}
+
 export function TaskCard({ task, href }: { task: TaskItem; href?: string }) {
   const content = (
     <div className="rounded-2xl bg-white p-4 shadow-card transition active:scale-[0.99] active:bg-surface-2">
@@ -145,7 +184,7 @@ export function TaskCard({ task, href }: { task: TaskItem; href?: string }) {
       <div className="mt-2 flex flex-wrap gap-1.5">
         <PriorityBadge priority={task.priority} />
         {task.deadlineText && <Pill tone="muted">{task.deadlineText}</Pill>}
-        {task.needConfirm && <Pill tone="light">需确认</Pill>}
+        <ConfirmationBadge task={task} />
       </div>
     </div>
   );

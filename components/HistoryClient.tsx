@@ -54,7 +54,7 @@ export function HistoryClient({ records, filter }: { records: RecordItem[]; filt
           />
           <button
             onClick={() => setQuery("")}
-            className={`flex h-5 w-5 items-center justify-center rounded-full bg-surface-2 text-muted transition ${
+            className={`flex !h-5 !min-h-5 !w-5 !min-w-5 items-center justify-center rounded-full bg-surface-2 p-0 text-muted transition ${
               query ? "opacity-100" : "pointer-events-none opacity-0"
             }`}
             aria-label="清空搜索"

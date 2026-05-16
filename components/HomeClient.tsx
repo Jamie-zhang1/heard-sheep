@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { PwaInstallPrompt } from "./PwaInstallPrompt";
 import { SheepVisual } from "./SheepVisual";
-import { EmptyState, RecordRow, SectionTitle } from "./ui";
+import { CloseButton, EmptyState, RecordRow, SectionTitle } from "./ui";
 import { formatBytes, formatDuration } from "@/lib/format";
 import { createSpeechRecognition, isBrowserAsrAvailable } from "@/lib/asr/client";
 import { apiPath } from "@/lib/api-path";
@@ -878,7 +878,7 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
                     />
                     <button
                       onClick={() => removeImageFile(index)}
-                      className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white"
+                      className="absolute -right-1 -top-1 flex !h-5 !min-h-5 !w-5 !min-w-5 items-center justify-center rounded-full bg-red-500 p-0 text-white"
                     >
                       <X size={12} />
                     </button>
@@ -1097,12 +1097,10 @@ function FullOverlay({ children, dark = false }: { children: React.ReactNode; da
 
 function PanelHeader({ title, subtitle, onClose }: { title: string; subtitle?: string; onClose: () => void }) {
   return (
-    <div className="shrink-0 px-6 pb-4 pt-5 text-center">
-      <button onClick={onClose} className="absolute right-6 top-5 rounded-full bg-surface-2 p-1.5 text-muted transition active:scale-95" aria-label="关闭">
-        <X size={18} />
-      </button>
-      <h2 className="text-lg font-black">{title}</h2>
-      {subtitle && <p className="mt-1 text-xs leading-5 text-muted">{subtitle}</p>}
+    <div className="relative shrink-0 px-16 pb-4 pt-5 text-center">
+      <CloseButton onClick={onClose} className="absolute right-6 top-5" />
+      <h2 className="truncate text-lg font-black">{title}</h2>
+      {subtitle && <p className="mx-auto mt-1 max-w-[240px] text-xs leading-5 text-muted">{subtitle}</p>}
     </div>
   );
 }

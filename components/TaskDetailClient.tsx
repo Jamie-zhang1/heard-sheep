@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Check, Edit3, Mic, Play, Save, X } from "lucide-react";
-import { LabelPill, Pill, PriorityBadge, StatusBadge, TaskLabelList } from "./ui";
+import { ArrowLeft, Check, ChevronRight, Edit3, Mic, Play, Save } from "lucide-react";
+import { CloseButton, LabelPill, Pill, PriorityBadge, StatusBadge, TaskLabelList, confirmationIssueCount } from "./ui";
 import { formatDateTime, formatDuration } from "@/lib/format";
 import { apiPath } from "@/lib/api-path";
 import type { RecordItem, TaskItem, TaskStatus } from "@/lib/types";
@@ -73,11 +73,20 @@ export function TaskDetailClient({ initialRecord, initialTask }: { initialRecord
             <PriorityBadge priority={task.priority} />
             <StatusBadge status={task.status} />
             {task.deadlineText && <Tag>{task.deadlineText}</Tag>}
-            {task.needConfirm && <Tag>需确认</Tag>}
+            {task.needConfirm && (
+              <button
+                type="button"
+                onClick={() => document.getElementById("confirm")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                className="inline-flex !h-6 !min-h-6 !min-w-0 items-center justify-center gap-0.5 whitespace-nowrap rounded-full bg-tag-blue px-2.5 text-[11px] font-semibold leading-none text-[#1D6FB8] transition active:scale-[0.98]"
+              >
+                去确认{confirmationIssueCount(task) ? ` ${confirmationIssueCount(task)}项` : ""}
+                <ChevronRight size={12} />
+              </button>
+            )}
             <Tag>置信度 {confidenceLabel(task.confidence)}</Tag>
             <button
               onClick={() => setEditing(true)}
-              className="inline-flex h-6 items-center justify-center rounded-full bg-surface-2 px-2.5 text-[11px] font-semibold leading-none text-muted transition active:brightness-95"
+              className="inline-flex !h-6 !min-h-6 !min-w-0 items-center justify-center rounded-full bg-surface-2 px-2.5 text-[11px] font-semibold leading-none text-muted transition active:brightness-95"
             >
               标签管理
             </button>
@@ -152,7 +161,7 @@ export function TaskDetailClient({ initialRecord, initialTask }: { initialRecord
           <InfoList items={task.missingInfo} empty="暂无缺失信息。" />
         </DetailSection>
 
-        <DetailSection title="建议确认问题">
+        <DetailSection id="confirm" title="建议确认问题">
           <InfoList items={task.confirmQuestions} empty="暂无建议确认问题。" />
         </DetailSection>
 
@@ -170,9 +179,11 @@ export function TaskDetailClient({ initialRecord, initialTask }: { initialRecord
             <div className="mx-auto mt-3 h-1 w-9 rounded bg-line" />
             <div className="flex items-center justify-between px-6 py-3">
               <div className="text-base font-black">编辑任务</div>
-              <button onClick={() => setEditing(false)} className="text-muted" aria-label="关闭编辑">
-                <X size={20} />
-              </button>
+              <CloseButton
+                onClick={() => setEditing(false)}
+                ariaLabel="关闭编辑"
+                className="h-10 w-10 bg-transparent hover:bg-surface-2 active:bg-surface-2"
+              />
             </div>
             <div className="safe-scroll px-6 pb-4">
               <Field label="任务标题">
@@ -251,9 +262,9 @@ export function TaskDetailClient({ initialRecord, initialTask }: { initialRecord
   );
 }
 
-function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
+function DetailSection({ id, title, children }: { id?: string; title: string; children: React.ReactNode }) {
   return (
-    <section className="mb-5">
+    <section id={id} className="mb-5 scroll-mt-5">
       <h2 className="mb-2.5 text-[11px] font-bold uppercase tracking-[1.5px] text-muted">
         {title}
       </h2>

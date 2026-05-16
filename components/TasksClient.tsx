@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { CheckCircle2, ChevronRight, SlidersHorizontal } from "lucide-react";
-import { EmptyState, LabelPill, Pill, PriorityBadge, StatusBadge } from "./ui";
+import { ConfirmationBadge, EmptyState, LabelPill, PriorityBadge, StatusBadge } from "./ui";
 import { formatDateTime } from "@/lib/format";
 import { primaryLabelId } from "@/lib/labels";
 import type { RecordItem, TaskItem, TaskStatus } from "@/lib/types";
@@ -176,7 +176,7 @@ function AnalysisTaskCard({ row }: { row: AnalysisRow }) {
       <div className="mt-3 flex flex-wrap gap-1.5">
         <LabelPill id={labelId} />
         <PriorityBadge priority={topPriority} />
-        {needConfirm && <Pill tone="light">需确认</Pill>}
+        {needConfirm && <ConfirmationBadge task={firstTask} />}
       </div>
 
       <div className="mt-3 flex items-center justify-between gap-3 border-t border-line pt-3 text-[11px] font-semibold text-muted">
