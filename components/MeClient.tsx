@@ -640,10 +640,15 @@ function toMarkdown(records: RecordItem[]) {
   if (!records.length) return "# 听到了咩导出\n\n暂无记录。\n";
   return records
     .map((record) => {
+      const candidateTasks = record.candidateTasks?.length
+        ? record.candidateTasks
+            .map((task, index) => `${index + 1}. ${task.title}（${task.candidateStatus === "added" ? "已加入" : "候选"}）\n   - 截止：${task.deadlineText || "未明确"}\n   - 依据：${task.sourceEvidence}`)
+            .join("\n")
+        : "暂无候选任务";
       const tasks = record.tasks
         .map((task, index) => `${index + 1}. ${task.title}（${task.status}）\n   - 截止：${task.deadlineText || "未明确"}\n   - 依据：${task.sourceEvidence}`)
         .join("\n");
-      return `# ${record.title}\n\n${record.summary}\n\n## 任务\n\n${tasks}\n`;
+      return `# ${record.title}\n\n${record.summary}\n\n## 候选任务\n\n${candidateTasks}\n\n## 已加入任务\n\n${tasks || "暂无已加入任务"}\n`;
     })
     .join("\n---\n");
 }

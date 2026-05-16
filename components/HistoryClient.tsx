@@ -19,6 +19,7 @@ export function HistoryClient({ records, filter }: { records: RecordItem[]; filt
         record.summary,
         record.transcriptText,
         record.rawText,
+        ...(record.candidateTasks ?? []).map((task) => `${task.title} ${task.description} ${task.sourceEvidence}`),
         ...record.tasks.map((task) => `${task.title} ${task.description} ${task.sourceEvidence}`)
       ]
         .join(" ")

@@ -3,6 +3,8 @@ import path from "path";
 import { randomUUID } from "crypto";
 import type {
   AnalyzeResult,
+  AnalyzeTask,
+  CandidateTaskItem,
   RecordCreateInput,
   RecordItem,
   TaskItem,
@@ -62,30 +64,10 @@ export async function createRecord(input: RecordCreateInput) {
     warnings: input.analysis.warnings,
     aiMeta: input.analysis.meta,
     marks: input.marks,
-    tasks: input.analysis.tasks.map((task, index) => ({
-      id: `task_${randomUUID()}`,
-      recordId,
-      title: task.title || `待办 ${index + 1}`,
-      description: task.description,
-      priority: task.priority,
-      priorityReason: task.priority_reason,
-      deadlineText: task.deadline_text,
-      deadlineDate: task.deadline_date,
-      deliverable: task.deliverable,
-      assignee: task.assignee,
-      dependencies: task.dependencies,
-      sourceEvidence: task.source_evidence,
-      steps: task.steps,
-      missingInfo: task.missing_info,
-      confirmQuestions: task.confirm_questions,
-      risk: task.risk,
-      needConfirm: task.need_confirm,
-      confidence: task.confidence,
-      status: task.status,
-      labels: task.labels?.length
-        ? task.labels
-        : inferTaskLabels(input.source, `${task.title} ${task.description} ${input.transcriptText}`)
-    })),
+    candidateTasks: input.analysis.tasks.map((task, index) =>
+      toCandidateTask(recordId, input.source, input.transcriptText, task, index)
+    ),
+    tasks: [],
     createdAt: now,
     updatedAt: now
   };
@@ -148,32 +130,79 @@ export async function addTask(recordId: string, input: Partial<TaskItem>) {
   const records = await readRecords();
   const record = records.find((item) => item.id === recordId);
   if (!record) return null;
-  const task: TaskItem = {
-    id: `task_${randomUUID()}`,
-    recordId,
-    title: input.title || "手动添加任务",
-    description: input.description || "",
-    priority: input.priority || "medium",
-    priorityReason: input.priorityReason,
-    deadlineText: input.deadlineText,
-    deadlineDate: input.deadlineDate ?? null,
-    deliverable: input.deliverable,
-    assignee: input.assignee,
-    dependencies: input.dependencies ?? [],
-    sourceEvidence: input.sourceEvidence || "用户手动添加，暂无原文依据。",
-    steps: input.steps ?? [],
-    missingInfo: input.missingInfo ?? [],
-    confirmQuestions: input.confirmQuestions ?? [],
-    risk: input.risk,
-    needConfirm: input.needConfirm ?? false,
-    confidence: input.confidence || "medium",
-    status: (input.status as TaskStatus) || "todo",
-    labels: input.labels?.length ? input.labels : inferTaskLabels(record.source, `${input.title ?? ""} ${input.description ?? ""}`)
-  };
+  const task = buildTask(record, input, "手动添加任务");
   record.tasks.push(task);
   record.updatedAt = new Date().toISOString();
   await writeRecords(records);
   return { task, record };
+}
+
+export async function addTaskFromCandidate(
+  recordId: string,
+  candidateId: string,
+  patch: Partial<CandidateTaskItem> = {}
+) {
+  const result = await addTasksFromCandidates(recordId, [{ id: candidateId, patch }]);
+  if (!result) return null;
+  return {
+    task: result.tasks[0],
+    record: result.record,
+    candidate: result.candidates[0]
+  };
+}
+
+export async function addTasksFromCandidates(
+  recordId: string,
+  inputs: Array<{ id: string; patch?: Partial<CandidateTaskItem> }>
+) {
+  const records = await readRecords();
+  const record = records.find((item) => item.id === recordId);
+  if (!record) return null;
+  const candidateTasks = record.candidateTasks ?? [];
+  const createdTasks: TaskItem[] = [];
+  const updatedCandidates: CandidateTaskItem[] = [];
+  const now = new Date().toISOString();
+
+  for (const input of inputs) {
+    const index = candidateTasks.findIndex((candidate) => candidate.id === input.id);
+    if (index === -1) continue;
+
+    const current = {
+      ...candidateTasks[index],
+      ...input.patch,
+      id: candidateTasks[index].id,
+      recordId,
+      candidateStatus: candidateTasks[index].candidateStatus,
+      addedTaskId: candidateTasks[index].addedTaskId,
+      addedAt: candidateTasks[index].addedAt
+    };
+
+    if (current.candidateStatus === "added" && current.addedTaskId) {
+      const existingTask = record.tasks.find((task) => task.id === current.addedTaskId);
+      if (existingTask) {
+        candidateTasks[index] = current;
+        createdTasks.push(existingTask);
+        updatedCandidates.push(current);
+        continue;
+      }
+    }
+
+    const task = buildTask(record, current, current.title || "未命名任务");
+    record.tasks.push(task);
+    candidateTasks[index] = {
+      ...current,
+      candidateStatus: "added",
+      addedTaskId: task.id,
+      addedAt: now
+    };
+    createdTasks.push(task);
+    updatedCandidates.push(candidateTasks[index]);
+  }
+
+  record.candidateTasks = candidateTasks;
+  record.updatedAt = now;
+  await writeRecords(records);
+  return { tasks: createdTasks, candidates: updatedCandidates, record };
 }
 
 export async function deleteTask(taskId: string) {
@@ -196,5 +225,64 @@ function toOrganizedText(analysis: AnalyzeResult) {
     keyPoints: analysis.organized_text.key_points,
     timeMentions: analysis.organized_text.time_mentions,
     specialRequirements: analysis.organized_text.special_requirements
+  };
+}
+
+function toCandidateTask(
+  recordId: string,
+  source: RecordItem["source"],
+  transcriptText: string,
+  task: AnalyzeTask,
+  index: number
+): CandidateTaskItem {
+  return {
+    id: `candidate_${randomUUID()}`,
+    recordId,
+    candidateStatus: "candidate",
+    title: task.title || `候选任务 ${index + 1}`,
+    description: task.description,
+    priority: task.priority,
+    priorityReason: task.priority_reason,
+    deadlineText: task.deadline_text,
+    deadlineDate: task.deadline_date,
+    deliverable: task.deliverable,
+    assignee: task.assignee,
+    dependencies: task.dependencies,
+    sourceEvidence: task.source_evidence,
+    steps: task.steps,
+    missingInfo: task.missing_info,
+    confirmQuestions: task.confirm_questions,
+    risk: task.risk,
+    needConfirm: task.need_confirm,
+    confidence: task.confidence,
+    status: task.status,
+    labels: task.labels?.length
+      ? task.labels
+      : inferTaskLabels(source, `${task.title} ${task.description} ${transcriptText}`)
+  };
+}
+
+function buildTask(record: Pick<RecordItem, "id" | "source">, input: Partial<TaskItem>, fallbackTitle: string): TaskItem {
+  return {
+    id: `task_${randomUUID()}`,
+    recordId: record.id,
+    title: input.title || fallbackTitle,
+    description: input.description || "",
+    priority: input.priority || "medium",
+    priorityReason: input.priorityReason,
+    deadlineText: input.deadlineText,
+    deadlineDate: input.deadlineDate ?? null,
+    deliverable: input.deliverable,
+    assignee: input.assignee,
+    dependencies: input.dependencies ?? [],
+    sourceEvidence: input.sourceEvidence || "用户手动添加，暂无原文依据。",
+    steps: input.steps ?? [],
+    missingInfo: input.missingInfo ?? [],
+    confirmQuestions: input.confirmQuestions ?? [],
+    risk: input.risk,
+    needConfirm: input.needConfirm ?? false,
+    confidence: input.confidence || "medium",
+    status: (input.status as TaskStatus) || "todo",
+    labels: input.labels?.length ? input.labels : inferTaskLabels(record.source, `${input.title ?? ""} ${input.description ?? ""}`)
   };
 }

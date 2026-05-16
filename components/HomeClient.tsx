@@ -647,7 +647,7 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
         <PwaInstallPrompt />
 
         <SectionTitle
-          title="最近任务"
+          title="最近分析"
           action={
             <button onClick={() => router.push("/tasks")} className="text-xs font-semibold text-neutral-400">
               查看全部 ›
@@ -658,7 +658,7 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
           {recentRecords.length ? (
             recentRecords.map((record) => <RecordRow key={record.id} record={record} href={`/result/${record.id}`} showProgress />)
           ) : (
-            <EmptyState title="还没有历史记录" description="先从一次录音开始，生成的任务计划会出现在这里。" />
+            <EmptyState title="还没有历史记录" description="先从一次录音开始，生成的候选任务会出现在这里。" />
           )}
         </div>
       </div>
@@ -685,7 +685,7 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
               ))}
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/[0.08] p-4 text-[13px] leading-7 text-white/70">
-              正在记录口头交代。结束后会先转成文字，你可以检查并修改，再生成任务计划。
+              正在记录口头交代。结束后会先转成文字，你可以检查并修改，再生成候选任务。
             </div>
             {browserAsrRef.current && (
               <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.05] p-4">
@@ -835,7 +835,7 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
               onClick={() => submitPaste(allowShortPaste)}
               className="flex-1 rounded-xl bg-brand px-4 py-3 text-sm font-bold text-white shadow-btn transition active:scale-[0.99]"
             >
-              确认并生成任务
+              确认并生成候选任务
             </button>
           </div>
         </FullOverlay>
@@ -900,7 +900,7 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
               onClick={submitImage}
               className="flex-1 rounded-xl bg-brand px-4 py-3 text-sm font-bold text-white shadow-btn transition active:scale-[0.99]"
             >
-              识别 {imageFiles.length > 0 ? `(${imageFiles.length} 张)` : ""}并生成任务
+              识别 {imageFiles.length > 0 ? `(${imageFiles.length} 张)` : ""}并生成候选任务
             </button>
           </div>
         </FullOverlay>
@@ -910,7 +910,7 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
         <FullOverlay>
           <PanelHeader
             title="确认图片文字"
-            subtitle="已先用 MiMo 识别图片内容，你可以检查后继续生成任务"
+            subtitle="已先用 MiMo 识别图片内容，你可以检查后继续生成候选任务"
             onClose={() => setOverlay("none")}
           />
           <div className="space-y-3 px-6">
@@ -951,7 +951,7 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
               onClick={() => submitImageText(imageText.trim().length < 20 && !!imageError)}
               className="flex-1 rounded-xl bg-brand px-4 py-3 text-sm font-bold text-white shadow-btn transition active:scale-[0.99]"
             >
-              用文字生成任务
+              用文字生成候选任务
             </button>
           </div>
         </FullOverlay>
@@ -994,7 +994,7 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
           <div className="flex-1" />
           <div className="safe-bottom-pad space-y-2 px-6">
             <button onClick={() => analyzeAndSave()} className="w-full rounded-xl bg-brand px-4 py-3 text-sm font-bold text-white shadow-btn transition active:scale-[0.99]">
-              确认并生成任务
+              确认并生成候选任务
             </button>
             <div className="grid grid-cols-2 gap-2">
               <button
@@ -1015,7 +1015,7 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
       )}
 
       {overlay === "analyzing" && (
-        <ProcessingOverlay title="正在帮你拆解任务..." subtitle="马上就好" steps={ANALYZE_STEPS} activeStep={processStep} />
+        <ProcessingOverlay title="正在帮你拆解候选任务..." subtitle="马上就好" steps={ANALYZE_STEPS} activeStep={processStep} />
       )}
 
       {overlay === "mic-error" && (

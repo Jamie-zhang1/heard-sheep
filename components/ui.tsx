@@ -194,10 +194,12 @@ export function TaskCard({ task, href }: { task: TaskItem; href?: string }) {
 }
 
 export function RecordRow({ record, href, showProgress = false }: { record: RecordItem; href: string; showProgress?: boolean }) {
-  const undone = record.tasks.filter((task) => task.status !== "done").length;
-  const done = record.tasks.length - undone;
+  const candidates = record.candidateTasks ?? [];
+  const candidateCount = candidates.length;
+  const confirmedCount = record.tasks.length;
+  const done = record.tasks.filter((task) => task.status === "done").length;
   const progress = record.tasks.length ? Math.round((done / record.tasks.length) * 100) : 0;
-  const labelId = primaryLabelId(record.tasks[0]?.labels, record.source);
+  const labelId = primaryLabelId(record.tasks[0]?.labels ?? candidates[0]?.labels, record.source);
   return (
     <Link href={href} className="mx-0 mb-3 flex items-center gap-3 rounded-2xl bg-white p-3 shadow-card transition hover:brightness-[0.98] active:scale-[0.99]">
       <div className="flex w-[88px] shrink-0 items-center justify-center">
@@ -206,21 +208,24 @@ export function RecordRow({ record, href, showProgress = false }: { record: Reco
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-semibold leading-5">{record.title}</div>
         <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] font-medium leading-4 text-muted [word-break:keep-all]">
-          <span className="whitespace-nowrap">{record.tasks.length} 条待办</span>
+          <span className="whitespace-nowrap">{candidateCount || confirmedCount} 条候选</span>
           <span className="shrink-0">·</span>
-          <span className="whitespace-nowrap">{undone} 条待处理</span>
+          <span className="whitespace-nowrap">{confirmedCount} 条已加入</span>
           <span className="shrink-0">·</span>
           <span className="whitespace-nowrap">{formatDateTime(record.createdAt)}</span>
         </div>
-        {showProgress && (
+        {showProgress && confirmedCount > 0 && (
           <div className="mt-2 flex items-center gap-2">
             <span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-surface-2">
               <span className="block h-full rounded-full bg-brand transition-all" style={{ width: `${progress}%` }} />
             </span>
             <span className="shrink-0 text-[10px] font-semibold text-muted">
-              {done}/{record.tasks.length}
+              {done}/{confirmedCount}
             </span>
           </div>
+        )}
+        {showProgress && confirmedCount === 0 && candidateCount > 0 && (
+          <div className="mt-2 text-[10px] font-semibold text-brand">等待确认加入任务清单</div>
         )}
       </div>
       <ChevronRight size={18} className="text-neutral-400" />

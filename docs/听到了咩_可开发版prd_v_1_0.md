@@ -31,7 +31,8 @@ V0.6 同步引入新版小羊状态视觉体系，统一品牌形象与等待、
 录音 / 上传音频 / 粘贴转写稿 / 上传图片
 → 转写确认
 → AI 分析
-→ 整理文本 / 任务提取 / 执行方案
+→ 整理文本 / 候选任务 / 执行方案
+→ 用户确认加入任务清单
 → 任务详情
 → 编辑任务
 → 历史回看
@@ -67,7 +68,7 @@ V0.6 同步引入新版小羊状态视觉体系，统一品牌形象与等待、
 - `/api/vision/extract-text` provider 架构，支持 Xiaomi MiMo 图片理解，失败时回到手动确认图片文字。
 - `/api/analyze` provider 架构，默认使用 DeepSeek V4 Flash，保留 MiMo OpenAI-compatible API 与 mock fallback。
 - Zod 校验 AI 输出结构。
-- 结果页三 Tab。
+- 结果页三 Tab，AI 生成任务默认进入候选区，不自动进入正式任务清单。
 - 任务详情与任务编辑。
 - 标签系统。
 - 历史记录与任务页筛选。
@@ -87,8 +88,8 @@ V0.6 同步引入新版小羊状态视觉体系，统一品牌形象与等待、
 
 | 页面 | 路由 | 主要职责 |
 | --- | --- | --- |
-| 首页 | `/sheep` | 录音主入口、上传/粘贴/图片入口、最近任务 |
-| 任务页 | `/sheep/tasks` | 展示任务列表，按状态和优先级筛选 |
+| 首页 | `/sheep` | 录音主入口、上传/粘贴/图片入口、最近分析 |
+| 任务页 | `/sheep/tasks` | 展示已加入任务列表，按状态和优先级筛选 |
 | 历史页 | `/sheep/history` | 按时间回看记录，支持搜索 |
 | 我的页 | `/sheep/me` | 统计、模型设置、导出、隐私、占位入口 |
 | 结果页 | `/sheep/result/[id]` | 展示分析结果三 Tab |
@@ -187,7 +188,7 @@ V0.6 同步引入新版小羊状态视觉体系，统一品牌形象与等待、
 已实现三 Tab：
 
 - 整理文本：核心摘要、关键要求、时间信息、整理后内容、特殊要求、录音标记。
-- 任务提取：任务卡片、优先级、截止时间、需确认、原文依据。
+- 候选任务：任务卡片、优先级、截止时间、需确认、原文依据；支持多选、全选/取消全选、批量加入、单条加入和加入前编辑。
 - 执行方案：推荐执行顺序、缺失信息、建议确认问题、风险提示。
 
 ### 5.9 任务详情与编辑
@@ -205,7 +206,7 @@ V0.6 同步引入新版小羊状态视觉体系，统一品牌形象与等待、
 
 已实现：
 
-- 展示全部任务。
+- 仅展示用户已确认加入任务清单的正式任务，不展示仍停留在结果页的候选任务。
 - 支持全部 / 待处理 / 需确认 / 已完成筛选。
 - 支持优先级筛选。
 - 点击任务进入详情。
@@ -292,7 +293,7 @@ type AnalyzeTask = {
 - 截止时间不明确时，不伪造具体日期。
 - 每条任务必须有 `source_evidence`。
 - 模糊信息进入 `missing_info` 或 `confirm_questions`。
-- 输出必须可直接渲染到结果页和任务详情页。
+- 输出必须可直接渲染到结果页候选任务；用户确认加入后再进入任务详情页。
 
 ## 7. 数据模型
 
@@ -312,6 +313,7 @@ type RecordItem = {
   globalConfirmQuestions: string[]
   warnings: string[]
   aiMeta?: AnalyzeMeta
+  candidateTasks?: CandidateTaskItem[] // AI 输出候选，默认不进入任务页
   tasks: TaskItem[]
   marks?: Mark[]
   createdAt: string
@@ -343,6 +345,17 @@ type TaskItem = {
   labels: string[]
 }
 ```
+
+```ts
+type CandidateTaskItem = Omit<TaskItem, "id"> & {
+  id: string
+  candidateStatus: "candidate" | "added"
+  addedTaskId?: string
+  addedAt?: string
+}
+```
+
+规则：`candidateTasks` 保留 AI 原始候选与用户在结果页的加入前编辑；`tasks` 只保存用户单条加入或批量加入后的正式任务。任务页、任务详情与统计只消费 `tasks`。
 
 ## 8. 标签系统
 

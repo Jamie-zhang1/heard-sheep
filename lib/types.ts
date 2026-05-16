@@ -2,6 +2,7 @@ export type SourceType = "recording" | "upload" | "paste" | "image";
 export type Priority = "high" | "medium" | "low";
 export type Confidence = "high" | "medium" | "low";
 export type TaskStatus = "todo" | "doing" | "done";
+export type CandidateTaskStatus = "candidate" | "added";
 export type TaskLabelType = "source" | "scenario" | "system";
 
 export type TaskLabel = {
@@ -86,6 +87,13 @@ export type TaskItem = {
   labels: string[];
 };
 
+export type CandidateTaskItem = Omit<TaskItem, "id"> & {
+  id: string;
+  candidateStatus: CandidateTaskStatus;
+  addedTaskId?: string;
+  addedAt?: string;
+};
+
 export type RecordItem = {
   id: string;
   title: string;
@@ -99,6 +107,7 @@ export type RecordItem = {
   globalConfirmQuestions: string[];
   warnings: string[];
   aiMeta?: AnalyzeMeta;
+  candidateTasks?: CandidateTaskItem[];
   tasks: TaskItem[];
   marks?: Mark[];
   createdAt: string;
