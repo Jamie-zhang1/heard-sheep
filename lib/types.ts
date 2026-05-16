@@ -11,6 +11,14 @@ export type TaskLabel = {
   type: TaskLabelType;
 };
 
+export type ConfirmationAnswer = {
+  id: string;
+  question: string;
+  answer: string;
+  resolved: boolean;
+  updatedAt?: string;
+};
+
 export type AnalyzeMeta = {
   provider: "deepseek" | "mimo" | "mock" | "mock_fallback";
   model?: string;
@@ -82,6 +90,7 @@ export type TaskItem = {
   confirmQuestions: string[];
   risk?: string;
   needConfirm: boolean;
+  confirmationAnswers?: ConfirmationAnswer[];
   confidence: Confidence;
   status: TaskStatus;
   labels: string[];

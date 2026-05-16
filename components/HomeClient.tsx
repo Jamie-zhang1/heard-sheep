@@ -18,6 +18,7 @@ import { PwaInstallPrompt } from "./PwaInstallPrompt";
 import { SheepVisual } from "./SheepVisual";
 import { CloseButton, EmptyState, RecordRow, SectionTitle } from "./ui";
 import { formatBytes, formatDuration } from "@/lib/format";
+import { MAX_AUDIO_BYTES, MAX_RECORDING_SECONDS, formatDurationLimit } from "@/lib/asr/limits";
 import { createSpeechRecognition, isBrowserAsrAvailable } from "@/lib/asr/client";
 import { apiPath } from "@/lib/api-path";
 import type { AnalyzeResult, Mark, RecordItem, SourceType } from "@/lib/types";
@@ -93,6 +94,7 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
   const [confirmedText, setConfirmedText] = useState("");
   const [processStep, setProcessStep] = useState(0);
   const [lastError, setLastError] = useState("");
+  const [transcribeErrorMode, setTranscribeErrorMode] = useState<"retry" | "record" | "upload">("retry");
   const [noTaskRecordId, setNoTaskRecordId] = useState<string | null>(null);
   const [marks, setMarks] = useState<Mark[]>([]);
   const chunksRef = useRef<Blob[]>([]);
@@ -297,8 +299,18 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
   }
 
   async function transcribeAudio(blob: Blob, source: SourceType, duration?: number, audioName?: string) {
+    const limitMessage = audioLimitMessage(blob, duration);
+    if (limitMessage) {
+      retryAudioRef.current = null;
+      setTranscribeErrorMode(source === "upload" ? "upload" : "record");
+      setLastError(limitMessage);
+      setOverlay("transcribe-error");
+      return;
+    }
+
     setOverlay("transcribing");
     setLastError("");
+    setTranscribeErrorMode("retry");
     retryAudioRef.current = { blob, source, duration, audioName };
     const formData = new FormData();
     formData.append("audio", blob, audioName ?? "recording.webm");
@@ -310,7 +322,13 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
         method: "POST",
         body: formData
       });
-      if (!response.ok) throw new Error("transcribe failed");
+      if (!response.ok) {
+        const errorBody = (await response.json().catch(() => null)) as { message?: string } | null;
+        setTranscribeErrorMode(response.status === 413 ? (source === "upload" ? "upload" : "record") : "retry");
+        setLastError(errorBody?.message || "转写失败，可以重试或手动粘贴文本。");
+        setOverlay("transcribe-error");
+        return;
+      }
       const data = (await response.json()) as {
         text: string;
         duration?: number;
@@ -333,6 +351,7 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
       setConfirmedText(data.text);
       setOverlay("confirm");
     } catch {
+      setTranscribeErrorMode("retry");
       setLastError("转写失败，可以重试或手动粘贴文本。");
       setOverlay("transcribe-error");
     }
@@ -348,6 +367,11 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
     const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
     if (!allowed.includes(ext)) {
       setUploadError("仅支持 mp3 / wav / m4a / webm / mp4 / ogg / aac 格式。");
+      setUploadFile(null);
+      return;
+    }
+    if (file.size > MAX_AUDIO_BYTES) {
+      setUploadError(`音频文件 ${formatBytes(file.size)}，超过当前转写上限 ${formatBytes(MAX_AUDIO_BYTES)}。请压缩、裁剪后再上传，或改用粘贴转写稿。`);
       setUploadFile(null);
       return;
     }
@@ -685,7 +709,7 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
               ))}
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/[0.08] p-4 text-[13px] leading-7 text-white/70">
-              正在记录口头交代。结束后会先转成文字，你可以检查并修改，再生成候选任务。
+              正在记录口头交代。建议控制在 {formatDurationLimit()} 内；结束后会先转成文字，你可以检查并修改，再生成候选任务。
             </div>
             {browserAsrRef.current && (
               <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.05] p-4">
@@ -765,7 +789,7 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
               />
               <FileAudio className="mx-auto mb-2 text-neutral-400" size={42} />
               <p className="text-sm font-semibold text-muted">选择或拖拽音频文件</p>
-              <p className="mt-1 text-[11px] text-neutral-400">优先使用真实音频理解，失败时可回退</p>
+              <p className="mt-1 text-[11px] text-neutral-400">单个音频不超过 {formatBytes(MAX_AUDIO_BYTES)}，失败时可粘贴文字</p>
             </label>
             {uploadFile && (
               <div className="mt-4 rounded-2xl border border-brand-light bg-brand-light/45 p-4">
@@ -1049,8 +1073,16 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
         <ErrorOverlay
           title="转写失败了"
           description={lastError || "可以重试或手动粘贴文本。"}
-          primaryLabel="重新转写"
+          primaryLabel={transcribeErrorMode === "record" ? "重新录音" : transcribeErrorMode === "upload" ? "重新选择音频" : "重新转写"}
           onPrimary={() => {
+            if (transcribeErrorMode === "record") {
+              void startRecording();
+              return;
+            }
+            if (transcribeErrorMode === "upload") {
+              setOverlay("upload");
+              return;
+            }
             const retry = retryAudioRef.current;
             if (retry) void transcribeAudio(retry.blob, retry.source, retry.duration, retry.audioName);
           }}
@@ -1206,6 +1238,16 @@ function recordingFileName(mimeType?: string) {
   if (type.includes("mpeg")) return "recording.mp3";
   if (type.includes("wav")) return "recording.wav";
   return "recording.webm";
+}
+
+function audioLimitMessage(blob: Blob, duration?: number) {
+  if (blob.size > MAX_AUDIO_BYTES) {
+    return `音频文件 ${formatBytes(blob.size)}，超过当前转写上限 ${formatBytes(MAX_AUDIO_BYTES)}。请缩短录音、压缩音频，或改用粘贴转写稿。`;
+  }
+  if (duration && duration > MAX_RECORDING_SECONDS) {
+    return `录音时长 ${formatDuration(duration)}，超过当前建议上限 ${formatDurationLimit()}。请分段录音，或改用粘贴转写稿。`;
+  }
+  return "";
 }
 
 function formatTimer(seconds: number) {

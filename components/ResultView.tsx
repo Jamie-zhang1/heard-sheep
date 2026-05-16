@@ -30,6 +30,7 @@ import type { CandidateTaskItem, Priority, RecordItem, TaskItem } from "@/lib/ty
 
 type Tab = "text" | "tasks" | "plan";
 type CandidateForm = ReturnType<typeof toCandidateForm>;
+type ConfirmationFormItem = { id: string; question: string; answer: string };
 
 const tabs: Array<{ key: Tab; label: string; icon: typeof Text }> = [
   { key: "text", label: "整理文本", icon: Text },
@@ -50,6 +51,9 @@ export function ResultView({ record }: { record: RecordItem }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<CandidateForm | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [confirmationForm, setConfirmationForm] = useState<ConfirmationFormItem[]>([]);
+  const [savingConfirmation, setSavingConfirmation] = useState(false);
 
   const pendingCandidates = candidates.filter((task) => task.candidateStatus !== "added");
   const addedCandidates = candidates.filter((task) => task.candidateStatus === "added");
@@ -76,6 +80,50 @@ export function ResultView({ record }: { record: RecordItem }) {
     if (candidate.candidateStatus === "added") return;
     setEditingId(candidate.id);
     setForm(toCandidateForm(candidate));
+  }
+
+  function openConfirm(candidate: CandidateTaskItem) {
+    if (candidate.candidateStatus === "added") return;
+    setConfirmingId(candidate.id);
+    setConfirmationForm(toConfirmationForm(candidate));
+  }
+
+  async function saveCandidateConfirmation() {
+    if (!confirmingId) return;
+    const answers = confirmationForm.map((item) => ({
+      id: item.id,
+      question: item.question,
+      answer: item.answer.trim(),
+      resolved: Boolean(item.answer.trim()),
+      updatedAt: new Date().toISOString()
+    }));
+    const allAnswered = answers.length > 0 && answers.every((item) => item.resolved);
+    const patch: Partial<CandidateTaskItem> = {
+      confirmationAnswers: answers,
+      needConfirm: !allAnswered
+    };
+    const nextCandidates = candidates.map((candidate) =>
+      candidate.id === confirmingId ? { ...candidate, ...patch } : candidate
+    );
+    setSavingConfirmation(true);
+    setCandidates(nextCandidates);
+    try {
+      const response = await fetch(apiPath(`/api/records/${record.id}`), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ candidateTasks: nextCandidates })
+      });
+      if (!response.ok) throw new Error("save confirmation failed");
+      const data = (await response.json()) as { record: RecordItem };
+      setCandidates(initialCandidateTasks(data.record));
+      setConfirmingId(null);
+      setConfirmationForm([]);
+      router.refresh();
+    } catch {
+      setCandidates(candidates);
+    } finally {
+      setSavingConfirmation(false);
+    }
   }
 
   async function saveCandidateEdit() {
@@ -300,6 +348,7 @@ export function ResultView({ record }: { record: RecordItem }) {
                   busy={busyId === candidate.id}
                   onSelect={() => toggleSelected(candidate.id)}
                   onEdit={() => openEdit(candidate)}
+                  onConfirm={() => openConfirm(candidate)}
                   onAdd={() => addCandidate(candidate)}
                   onOpenTask={(taskId) => router.push(`/task/${taskId}`)}
                 />
@@ -353,6 +402,76 @@ export function ResultView({ record }: { record: RecordItem }) {
           </div>
         )}
       </main>
+
+      {confirmingId && (
+        <div className="absolute inset-0 z-40 flex items-end bg-black/30">
+          <div className="flex max-h-[76vh] w-full flex-col rounded-t-[32px] bg-white shadow-sheep">
+            <div className="mx-auto mt-3 h-1 w-9 rounded bg-line" />
+            <div className="flex items-center justify-between px-6 py-3">
+              <div className="text-base font-black">确认任务信息</div>
+              <CloseButton
+                onClick={() => {
+                  setConfirmingId(null);
+                  setConfirmationForm([]);
+                }}
+                ariaLabel="关闭确认"
+                className="h-10 w-10 bg-transparent hover:bg-surface-2 active:bg-surface-2"
+              />
+            </div>
+            <div className="safe-scroll px-6 pb-4">
+              {confirmationForm.length ? (
+                <div className="space-y-3">
+                  {confirmationForm.map((item, index) => (
+                    <label key={item.id} className="block rounded-2xl border border-line bg-white p-3 shadow-card">
+                      <div className="mb-2 flex items-start gap-2">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-light text-[10px] font-bold text-brand">
+                          {index + 1}
+                        </span>
+                        <span className="text-[13px] font-semibold leading-5 text-ink">{item.question}</span>
+                      </div>
+                      <textarea
+                        className="textarea min-h-[86px]"
+                        value={item.answer}
+                        onChange={(event) =>
+                          setConfirmationForm((items) =>
+                            items.map((current) => (current.id === item.id ? { ...current, answer: event.target.value } : current))
+                          )
+                        }
+                        placeholder="在这里补充确认后的答案或处理结论"
+                      />
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <p className="rounded-2xl bg-surface-2 p-4 text-sm leading-6 text-muted">
+                  这条任务暂无需要确认的问题。
+                </p>
+              )}
+            </div>
+            <div className="flex shrink-0 gap-2 border-t border-line px-6 pb-6 pt-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmingId(null);
+                  setConfirmationForm([]);
+                }}
+                className="flex-1 rounded-xl bg-surface-2 px-4 py-3 text-sm font-semibold text-ink-2"
+              >
+                稍后确认
+              </button>
+              <button
+                type="button"
+                onClick={saveCandidateConfirmation}
+                disabled={savingConfirmation || !confirmationForm.some((item) => item.answer.trim())}
+                className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-white shadow-btn disabled:opacity-60"
+              >
+                <Save size={15} />
+                {savingConfirmation ? "保存中" : "保存确认"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {form && editingId && (
         <div className="absolute inset-0 z-40 flex items-end bg-black/30">
@@ -475,6 +594,7 @@ function CandidateTaskCard({
   busy,
   onSelect,
   onEdit,
+  onConfirm,
   onAdd,
   onOpenTask
 }: {
@@ -483,10 +603,12 @@ function CandidateTaskCard({
   busy: boolean;
   onSelect: () => void;
   onEdit: () => void;
+  onConfirm: () => void;
   onAdd: () => void;
   onOpenTask: (taskId: string) => void;
 }) {
   const added = candidate.candidateStatus === "added";
+  const confirmed = !candidate.needConfirm && (candidate.confirmationAnswers?.some((item) => item.resolved) ?? false);
   return (
     <div className={`rounded-2xl bg-white p-4 shadow-card transition ${added ? "border border-tag-green" : ""}`}>
       <div className="mb-2 flex items-start gap-3">
@@ -523,6 +645,7 @@ function CandidateTaskCard({
         <TaskLabelList labels={candidate.labels} limit={2} />
         <PriorityBadge priority={candidate.priority} />
         <ConfirmationBadge task={candidate} />
+        {confirmed && <Pill tone="light">已确认</Pill>}
         {candidate.deadlineText && <Pill tone="muted">{candidate.deadlineText}</Pill>}
       </div>
       <div className="mt-3 rounded-xl border-l-[3px] border-brand bg-brand-light/45 px-3 py-2 text-xs italic leading-5 text-ink-2">
@@ -540,25 +663,34 @@ function CandidateTaskCard({
             <ChevronRight size={14} />
           </button>
         ) : (
-          <>
+          <div className="grid w-full grid-cols-3 gap-2">
             <button
               type="button"
               onClick={onEdit}
-              className="inline-flex h-10 flex-1 items-center justify-center gap-1 rounded-xl border border-line bg-white px-3 text-xs font-bold text-ink-2 transition active:bg-surface-2"
+              className="inline-flex h-10 items-center justify-center gap-1 rounded-xl border border-line bg-white px-2 text-xs font-bold text-ink-2 transition active:bg-surface-2"
             >
               <Edit3 size={14} />
               编辑
             </button>
             <button
               type="button"
+              onClick={onConfirm}
+              className={`inline-flex h-10 items-center justify-center rounded-xl px-2 text-xs font-bold transition active:scale-[0.99] ${
+                candidate.needConfirm ? "bg-brand-light text-brand" : "bg-surface-2 text-ink-2"
+              }`}
+            >
+              {candidate.needConfirm ? "确认信息" : "已确认"}
+            </button>
+            <button
+              type="button"
               onClick={onAdd}
               disabled={busy}
-              className="inline-flex h-10 flex-1 items-center justify-center gap-1 rounded-xl bg-brand px-3 text-xs font-bold text-white shadow-btn transition active:scale-[0.99] disabled:opacity-60"
+              className="inline-flex h-10 items-center justify-center gap-1 rounded-xl bg-brand px-2 text-xs font-bold text-white shadow-btn transition active:scale-[0.99] disabled:opacity-60"
             >
               <Plus size={14} />
               {busy ? "加入中" : "加入任务"}
             </button>
-          </>
+          </div>
         )}
       </div>
     </div>
@@ -637,10 +769,20 @@ function candidateToTaskPayload(candidate: CandidateTaskItem): Partial<Candidate
     confirmQuestions: candidate.confirmQuestions,
     risk: candidate.risk,
     needConfirm: candidate.needConfirm,
+    confirmationAnswers: candidate.confirmationAnswers,
     confidence: candidate.confidence,
     status: candidate.status,
     labels: candidate.labels
   };
+}
+
+function toConfirmationForm(candidate: CandidateTaskItem): ConfirmationFormItem[] {
+  const existing = new Map((candidate.confirmationAnswers ?? []).map((item) => [item.question, item.answer]));
+  return unique([...candidate.missingInfo, ...candidate.confirmQuestions]).map((question, index) => ({
+    id: `confirm_${index}`,
+    question,
+    answer: existing.get(question) ?? ""
+  }));
 }
 
 function toCandidateForm(candidate: CandidateTaskItem) {

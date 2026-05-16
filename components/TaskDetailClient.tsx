@@ -165,6 +165,12 @@ export function TaskDetailClient({ initialRecord, initialTask }: { initialRecord
           <InfoList items={task.confirmQuestions} empty="暂无建议确认问题。" />
         </DetailSection>
 
+        {(task.confirmationAnswers?.length ?? 0) > 0 && (
+          <DetailSection title="已确认信息">
+            <ConfirmationAnswerList items={task.confirmationAnswers ?? []} />
+          </DetailSection>
+        )}
+
         <DetailSection title="风险提示">
           <div className="rounded-2xl bg-white p-3.5 text-[13px] leading-6 text-ink-2 shadow-card">
             <strong className="text-ink">注意：</strong>
@@ -281,6 +287,25 @@ function InfoList({ items, empty }: { items: string[]; empty: string }) {
         <div key={item} className="flex gap-2 border-b border-line py-2 text-[13px] leading-5 last:border-0">
           <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
           <span>{item}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ConfirmationAnswerList({
+  items
+}: {
+  items: NonNullable<TaskItem["confirmationAnswers"]>;
+}) {
+  return (
+    <div className="space-y-2">
+      {items.map((item) => (
+        <div key={item.id} className="rounded-2xl bg-white p-3.5 text-[13px] leading-6 shadow-card">
+          <div className="font-bold text-ink">{item.question}</div>
+          <div className={`mt-1 ${item.answer ? "text-ink-2" : "text-muted"}`}>
+            {item.answer || "尚未填写确认结果"}
+          </div>
         </div>
       ))}
     </div>

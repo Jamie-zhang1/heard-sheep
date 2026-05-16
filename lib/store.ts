@@ -254,6 +254,7 @@ function toCandidateTask(
     confirmQuestions: task.confirm_questions,
     risk: task.risk,
     needConfirm: task.need_confirm,
+    confirmationAnswers: [],
     confidence: task.confidence,
     status: task.status,
     labels: task.labels?.length
@@ -281,6 +282,7 @@ function buildTask(record: Pick<RecordItem, "id" | "source">, input: Partial<Tas
     confirmQuestions: input.confirmQuestions ?? [],
     risk: input.risk,
     needConfirm: input.needConfirm ?? false,
+    confirmationAnswers: input.confirmationAnswers ?? [],
     confidence: input.confidence || "medium",
     status: (input.status as TaskStatus) || "todo",
     labels: input.labels?.length ? input.labels : inferTaskLabels(record.source, `${input.title ?? ""} ${input.description ?? ""}`)
