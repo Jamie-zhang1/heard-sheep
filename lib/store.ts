@@ -205,6 +205,31 @@ export async function addTasksFromCandidates(
   return { tasks: createdTasks, candidates: updatedCandidates, record };
 }
 
+export async function deleteTasksForRecord(recordId: string) {
+  const records = await readRecords();
+  const record = records.find((item) => item.id === recordId);
+  if (!record) return null;
+
+  const deletedTasks = record.tasks;
+  if (!deletedTasks.length) return { tasks: [], record };
+
+  const deletedTaskIds = new Set(deletedTasks.map((task) => task.id));
+  record.tasks = [];
+  record.candidateTasks = record.candidateTasks?.map((candidate) =>
+    candidate.addedTaskId && deletedTaskIds.has(candidate.addedTaskId)
+      ? {
+          ...candidate,
+          candidateStatus: "candidate",
+          addedTaskId: undefined,
+          addedAt: undefined
+        }
+      : candidate
+  );
+  record.updatedAt = new Date().toISOString();
+  await writeRecords(records);
+  return { tasks: deletedTasks, record };
+}
+
 export async function deleteTask(taskId: string) {
   const records = await readRecords();
   for (const record of records) {

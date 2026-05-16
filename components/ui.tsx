@@ -1,6 +1,6 @@
 import Link from "next/link";
 import clsx from "clsx";
-import { ChevronRight, X } from "lucide-react";
+import { ChevronRight, Trash2, X } from "lucide-react";
 import { formatDateTime, priorityLabel, statusLabel } from "@/lib/format";
 import { getTaskLabel, getTaskLabelName, primaryLabelId } from "@/lib/labels";
 import type { RecordItem, TaskItem } from "@/lib/types";
@@ -29,6 +29,60 @@ export function CloseButton({
     >
       <X size={18} strokeWidth={2.2} className="block" aria-hidden="true" />
     </button>
+  );
+}
+
+export function DeleteConfirmSheet({
+  title,
+  description,
+  confirmLabel = "确认删除",
+  deleting = false,
+  onCancel,
+  onConfirm
+}: {
+  title: string;
+  description: string;
+  confirmLabel?: string;
+  deleting?: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div className="absolute inset-0 z-40 flex items-end bg-black/30">
+      <div className="w-full rounded-t-[32px] bg-white px-6 pb-6 pt-3 shadow-sheep">
+        <div className="mx-auto mb-3 h-1 w-9 rounded bg-line" />
+        <div className="mb-2 flex items-center justify-between">
+          <div className="text-base font-black">{title}</div>
+          <CloseButton
+            onClick={onCancel}
+            ariaLabel="关闭删除确认"
+            className="h-10 w-10 bg-transparent hover:bg-surface-2 active:bg-surface-2"
+          />
+        </div>
+        <div className="rounded-2xl border border-line bg-white p-3.5 text-[13px] leading-6 text-ink-2 shadow-card">
+          {description}
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={deleting}
+            className="inline-flex h-11 items-center justify-center rounded-xl border border-line bg-white px-4 text-sm font-bold transition active:bg-surface-2 disabled:opacity-60"
+          >
+            取消
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={deleting}
+            className="inline-flex h-11 items-center justify-center gap-1 rounded-xl bg-ink px-4 text-sm font-bold text-white transition active:scale-[0.99] disabled:opacity-60"
+          >
+            <Trash2 size={15} />
+            {deleting ? "删除中" : confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -193,7 +247,19 @@ export function TaskCard({ task, href }: { task: TaskItem; href?: string }) {
   return <Link href={href}>{content}</Link>;
 }
 
-export function RecordRow({ record, href, showProgress = false }: { record: RecordItem; href: string; showProgress?: boolean }) {
+export function RecordRow({
+  record,
+  href,
+  showProgress = false,
+  onDelete,
+  deleteDisabled = false
+}: {
+  record: RecordItem;
+  href: string;
+  showProgress?: boolean;
+  onDelete?: () => void;
+  deleteDisabled?: boolean;
+}) {
   const candidates = record.candidateTasks ?? [];
   const candidateCount = candidates.length;
   const confirmedCount = record.tasks.length;
@@ -201,7 +267,8 @@ export function RecordRow({ record, href, showProgress = false }: { record: Reco
   const progress = record.tasks.length ? Math.round((done / record.tasks.length) * 100) : 0;
   const labelId = primaryLabelId(record.tasks[0]?.labels ?? candidates[0]?.labels, record.source);
   return (
-    <Link href={href} className="mx-0 mb-3 flex items-center gap-3 rounded-2xl bg-white p-3 shadow-card transition hover:brightness-[0.98] active:scale-[0.99]">
+    <div className="mx-0 mb-3 flex items-center gap-2 rounded-2xl bg-white p-3 shadow-card transition hover:brightness-[0.98]">
+      <Link href={href} className="flex min-w-0 flex-1 items-center gap-3 transition active:scale-[0.99]">
       <div className="flex w-[88px] shrink-0 items-center justify-center">
         <LabelPill id={labelId} compact />
       </div>
@@ -228,8 +295,20 @@ export function RecordRow({ record, href, showProgress = false }: { record: Reco
           <div className="mt-2 text-[10px] font-semibold text-brand">等待确认加入任务清单</div>
         )}
       </div>
-      <ChevronRight size={18} className="text-neutral-400" />
-    </Link>
+        <ChevronRight size={18} className="shrink-0 text-neutral-400" />
+      </Link>
+      {onDelete && (
+        <button
+          type="button"
+          onClick={onDelete}
+          disabled={deleteDisabled}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-2 text-muted transition active:scale-95 active:bg-line disabled:opacity-50"
+          aria-label="删除记录"
+        >
+          <Trash2 size={15} />
+        </button>
+      )}
+    </div>
   );
 }
 

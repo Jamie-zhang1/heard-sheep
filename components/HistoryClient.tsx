@@ -1,16 +1,26 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Search, X } from "lucide-react";
-import { EmptyState, RecordRow } from "./ui";
+import { DeleteConfirmSheet, EmptyState, RecordRow } from "./ui";
+import { apiPath } from "@/lib/api-path";
 import type { RecordItem } from "@/lib/types";
 
 export function HistoryClient({ records, filter }: { records: RecordItem[]; filter?: string }) {
+  const router = useRouter();
+  const [items, setItems] = useState(records);
   const [query, setQuery] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<RecordItem | null>(null);
+  const [deletingRecordId, setDeletingRecordId] = useState<string | null>(null);
   const isRecordingFilter = filter === "recordings";
 
+  useEffect(() => {
+    setItems(records);
+  }, [records]);
+
   const filteredRecords = useMemo(() => {
-    const sourceFiltered = isRecordingFilter ? records.filter((record) => record.source === "recording") : records;
+    const sourceFiltered = isRecordingFilter ? items.filter((record) => record.source === "recording") : items;
     const keyword = query.trim().toLowerCase();
     if (!keyword) return sourceFiltered;
     return sourceFiltered.filter((record) => {
@@ -26,10 +36,26 @@ export function HistoryClient({ records, filter }: { records: RecordItem[]; filt
         .toLowerCase();
       return haystack.includes(keyword);
     });
-  }, [isRecordingFilter, query, records]);
+  }, [isRecordingFilter, items, query]);
 
   const grouped = useMemo(() => groupByDay(filteredRecords), [filteredRecords]);
   const title = isRecordingFilter ? "全部录音记录" : "历史";
+
+  async function deleteHistoryRecord() {
+    if (!deleteTarget) return;
+    setDeletingRecordId(deleteTarget.id);
+    try {
+      const response = await fetch(apiPath(`/api/records/${deleteTarget.id}`), {
+        method: "DELETE"
+      });
+      if (!response.ok) return;
+      setItems((current) => current.filter((record) => record.id !== deleteTarget.id));
+      setDeleteTarget(null);
+      router.refresh();
+    } finally {
+      setDeletingRecordId(null);
+    }
+  }
 
   return (
     <>
@@ -67,15 +93,21 @@ export function HistoryClient({ records, filter }: { records: RecordItem[]; filt
 
       <main className="safe-scroll px-5 py-1">
         {filteredRecords.length ? (
-          Object.entries(grouped).map(([day, items]) => (
+          Object.entries(grouped).map(([day, dayItems]) => (
             <section key={day}>
               <div className="flex items-center gap-2 px-1 py-2">
                 <h2 className="text-[11px] font-bold uppercase tracking-[1.5px] text-muted">{day}</h2>
                 <span className="h-px flex-1 bg-line" />
-                <span className="text-[10px] font-semibold text-muted">{items.length} 条</span>
+                <span className="text-[10px] font-semibold text-muted">{dayItems.length} 条</span>
               </div>
-              {items.map((record) => (
-                <RecordRow key={record.id} record={record} href={`/result/${record.id}`} />
+              {dayItems.map((record) => (
+                <RecordRow
+                  key={record.id}
+                  record={record}
+                  href={`/result/${record.id}`}
+                  onDelete={() => setDeleteTarget(record)}
+                  deleteDisabled={deletingRecordId === record.id}
+                />
               ))}
             </section>
           ))
@@ -86,6 +118,16 @@ export function HistoryClient({ records, filter }: { records: RecordItem[]; filt
           />
         )}
       </main>
+
+      {deleteTarget && (
+        <DeleteConfirmSheet
+          title="删除历史记录"
+          description="会删除这条分析记录、候选任务和已加入任务。删除后无法在历史页继续回看。"
+          deleting={deletingRecordId === deleteTarget.id}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={deleteHistoryRecord}
+        />
+      )}
     </>
   );
 }

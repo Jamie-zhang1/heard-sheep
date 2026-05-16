@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { PwaInstallPrompt } from "./PwaInstallPrompt";
 import { SheepVisual } from "./SheepVisual";
-import { CloseButton, EmptyState, RecordRow, SectionTitle } from "./ui";
+import { CloseButton, DeleteConfirmSheet, EmptyState, RecordRow, SectionTitle } from "./ui";
 import { formatBytes, formatDuration } from "@/lib/format";
 import { MAX_AUDIO_BYTES, MAX_RECORDING_SECONDS, formatDurationLimit } from "@/lib/asr/limits";
 import { createSpeechRecognition, isBrowserAsrAvailable } from "@/lib/asr/client";
@@ -73,7 +73,10 @@ type VisionExtractionResponse = {
 
 export function HomeClient({ records }: { records: RecordItem[] }) {
   const router = useRouter();
+  const [recordItems, setRecordItems] = useState(records);
   const [overlay, setOverlay] = useState<Overlay>("none");
+  const [deleteTarget, setDeleteTarget] = useState<RecordItem | null>(null);
+  const [deletingRecordId, setDeletingRecordId] = useState<string | null>(null);
   const [recorder, setRecorder] = useState<MediaRecorder | null>(null);
   const [recordingStatus, setRecordingStatus] = useState<"recording" | "paused">("recording");
   const [seconds, setSeconds] = useState(0);
@@ -134,7 +137,11 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
     };
   }, [overlay]);
 
-  const recentRecords = useMemo(() => records.slice(0, 3), [records]);
+  useEffect(() => {
+    setRecordItems(records);
+  }, [records]);
+
+  const recentRecords = useMemo(() => recordItems.slice(0, 3), [recordItems]);
 
   useEffect(() => {
     if (overlay !== "record" || recordingStatus !== "recording") return;
@@ -600,6 +607,22 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
     router.push(`/task/${task.id}`);
   }
 
+  async function deleteRecentRecord() {
+    if (!deleteTarget) return;
+    setDeletingRecordId(deleteTarget.id);
+    try {
+      const response = await fetch(apiPath(`/api/records/${deleteTarget.id}`), {
+        method: "DELETE"
+      });
+      if (!response.ok) return;
+      setRecordItems((items) => items.filter((record) => record.id !== deleteTarget.id));
+      setDeleteTarget(null);
+      router.refresh();
+    } finally {
+      setDeletingRecordId(null);
+    }
+  }
+
   return (
     <>
       <div className="safe-scroll px-5 pb-3">
@@ -680,7 +703,16 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
         />
         <div>
           {recentRecords.length ? (
-            recentRecords.map((record) => <RecordRow key={record.id} record={record} href={`/result/${record.id}`} showProgress />)
+            recentRecords.map((record) => (
+              <RecordRow
+                key={record.id}
+                record={record}
+                href={`/result/${record.id}`}
+                showProgress
+                onDelete={() => setDeleteTarget(record)}
+                deleteDisabled={deletingRecordId === record.id}
+              />
+            ))
           ) : (
             <EmptyState title="还没有历史记录" description="先从一次录音开始，生成的候选任务会出现在这里。" />
           )}
@@ -1113,6 +1145,16 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
           secondaryLabel="返回修改文本"
           onSecondary={() => setOverlay(transcript?.source === "paste" ? "paste" : "confirm")}
           icon="ok"
+        />
+      )}
+
+      {deleteTarget && (
+        <DeleteConfirmSheet
+          title="删除最近记录"
+          description="会删除这条分析记录、候选任务和已加入任务，历史页与任务页也会同步移除。"
+          deleting={deletingRecordId === deleteTarget.id}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={deleteRecentRecord}
         />
       )}
     </>
