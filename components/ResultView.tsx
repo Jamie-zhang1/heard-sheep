@@ -13,15 +13,16 @@ import {
   Plus,
   Route,
   Save,
-  Text,
-  Trash2
+  Text
 } from "lucide-react";
 import {
   CloseButton,
   ConfirmationBadge,
+  DeleteConfirmSheet,
   LabelPill,
   Pill,
   PriorityBadge,
+  SelectionToolbar,
   TaskLabelList
 } from "./ui";
 import { formatDateTime, formatDuration } from "@/lib/format";
@@ -47,6 +48,9 @@ export function ResultView({ record }: { record: RecordItem }) {
   const [candidates, setCandidates] = useState<CandidateTaskItem[]>(() => initialCandidateTasks(record));
   const [joinedTasks, setJoinedTasks] = useState(record.tasks);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectedAddedIds, setSelectedAddedIds] = useState<string[]>([]);
+  const [deleteAddedOpen, setDeleteAddedOpen] = useState(false);
+  const [deletingAddedBatch, setDeletingAddedBatch] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [batchSaving, setBatchSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -60,6 +64,8 @@ export function ResultView({ record }: { record: RecordItem }) {
   const addedCandidates = candidates.filter((task) => task.candidateStatus === "added");
   const selectedPendingIds = selectedIds.filter((id) => pendingCandidates.some((task) => task.id === id));
   const allPendingSelected = pendingCandidates.length > 0 && selectedPendingIds.length === pendingCandidates.length;
+  const selectedAddedVisibleIds = selectedAddedIds.filter((id) => addedCandidates.some((task) => task.id === id));
+  const allAddedSelected = addedCandidates.length > 0 && selectedAddedVisibleIds.length === addedCandidates.length;
   const orderedCandidates = useMemo(
     () => [...candidates].sort((a, b) => priorityWeight(a.priority) - priorityWeight(b.priority)),
     [candidates]
@@ -75,6 +81,14 @@ export function ResultView({ record }: { record: RecordItem }) {
 
   function toggleAllPending() {
     setSelectedIds(allPendingSelected ? [] : pendingCandidates.map((task) => task.id));
+  }
+
+  function toggleAddedSelected(id: string) {
+    setSelectedAddedIds((items) => (items.includes(id) ? items.filter((item) => item !== id) : [...items, id]));
+  }
+
+  function toggleAllAdded() {
+    setSelectedAddedIds(allAddedSelected ? [] : addedCandidates.map((task) => task.id));
   }
 
   function openEdit(candidate: CandidateTaskItem) {
@@ -205,20 +219,31 @@ export function ResultView({ record }: { record: RecordItem }) {
     }
   }
 
-  async function deleteJoinedTask(candidate: CandidateTaskItem) {
-    if (!candidate.addedTaskId || busyId || batchSaving) return;
-    setBusyId(candidate.id);
+  async function deleteSelectedAddedTasks() {
+    if (!selectedAddedVisibleIds.length || batchSaving || deletingAddedBatch) return;
+    setDeletingAddedBatch(true);
     try {
-      const response = await fetch(apiPath(`/api/tasks/${candidate.addedTaskId}`), {
-        method: "DELETE"
-      });
-      if (!response.ok) throw new Error("delete task failed");
-      const data = (await response.json()) as { record: RecordItem };
-      setJoinedTasks(data.record.tasks);
-      setCandidates(initialCandidateTasks(data.record));
+      let nextRecord: RecordItem | null = null;
+      const selectedAdded = candidates.filter((candidate) => selectedAddedVisibleIds.includes(candidate.id));
+      for (const candidate of selectedAdded) {
+        if (!candidate.addedTaskId) continue;
+        const response = await fetch(apiPath(`/api/tasks/${candidate.addedTaskId}`), {
+          method: "DELETE"
+        });
+        if (response.ok) {
+          const data = (await response.json()) as { record: RecordItem };
+          nextRecord = data.record;
+        }
+      }
+      if (nextRecord) {
+        setJoinedTasks(nextRecord.tasks);
+        setCandidates(initialCandidateTasks(nextRecord));
+      }
+      setSelectedAddedIds([]);
+      setDeleteAddedOpen(false);
       router.refresh();
     } finally {
-      setBusyId(null);
+      setDeletingAddedBatch(false);
     }
   }
 
@@ -355,6 +380,18 @@ export function ResultView({ record }: { record: RecordItem }) {
                   </button>
                 </div>
               )}
+              {addedCandidates.length > 0 && (
+                <div className="mt-3">
+                  <SelectionToolbar
+                    selectedCount={selectedAddedVisibleIds.length}
+                    allSelected={allAddedSelected}
+                    deleting={deletingAddedBatch}
+                    deleteLabel="移出所选"
+                    onToggleAll={toggleAllAdded}
+                    onDelete={() => setDeleteAddedOpen(true)}
+                  />
+                </div>
+              )}
             </ResultBlock>
 
             {candidates.length ? (
@@ -362,13 +399,12 @@ export function ResultView({ record }: { record: RecordItem }) {
                 <CandidateTaskCard
                   key={candidate.id}
                   candidate={candidate}
-                  selected={selectedIds.includes(candidate.id)}
+                  selected={candidate.candidateStatus === "added" ? selectedAddedIds.includes(candidate.id) : selectedIds.includes(candidate.id)}
                   busy={busyId === candidate.id}
-                  onSelect={() => toggleSelected(candidate.id)}
+                  onSelect={() => (candidate.candidateStatus === "added" ? toggleAddedSelected(candidate.id) : toggleSelected(candidate.id))}
                   onEdit={() => openEdit(candidate)}
                   onConfirm={() => openConfirm(candidate)}
                   onAdd={() => addCandidate(candidate)}
-                  onDelete={() => deleteJoinedTask(candidate)}
                   onOpenTask={(taskId) => router.push(`/task/${taskId}`)}
                 />
               ))
@@ -591,6 +627,16 @@ export function ResultView({ record }: { record: RecordItem }) {
           </div>
         </div>
       )}
+
+      {deleteAddedOpen && (
+        <DeleteConfirmSheet
+          title="移出所选任务"
+          description={`会从任务清单移出 ${selectedAddedVisibleIds.length} 条已加入任务；分析结果和候选任务仍会保留，可再次加入。`}
+          deleting={deletingAddedBatch}
+          onCancel={() => setDeleteAddedOpen(false)}
+          onConfirm={deleteSelectedAddedTasks}
+        />
+      )}
     </>
   );
 }
@@ -615,7 +661,6 @@ function CandidateTaskCard({
   onEdit,
   onConfirm,
   onAdd,
-  onDelete,
   onOpenTask
 }: {
   candidate: CandidateTaskItem;
@@ -625,7 +670,6 @@ function CandidateTaskCard({
   onEdit: () => void;
   onConfirm: () => void;
   onAdd: () => void;
-  onDelete: () => void;
   onOpenTask: (taskId: string) => void;
 }) {
   const added = candidate.candidateStatus === "added";
@@ -636,15 +680,10 @@ function CandidateTaskCard({
         <button
           type="button"
           onClick={onSelect}
-          disabled={added}
           className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition ${
-            added
-              ? "border-tag-green bg-tag-green text-[#16A34A]"
-              : selected
-                ? "border-brand bg-brand text-white"
-                : "border-line bg-white text-transparent"
+            selected ? "border-brand bg-brand text-white" : "border-line bg-white text-transparent"
           }`}
-          aria-label={selected ? "取消选择候选任务" : "选择候选任务"}
+          aria-label={selected ? "取消选择任务" : "选择任务"}
         >
           <Check size={14} strokeWidth={3} />
         </button>
@@ -674,26 +713,15 @@ function CandidateTaskCard({
       </div>
       <div className="mt-3 flex gap-2">
         {added ? (
-          <>
-            <button
-              type="button"
-              onClick={onDelete}
-              disabled={busy}
-              className="inline-flex h-10 flex-1 items-center justify-center gap-1 rounded-xl border border-line bg-white px-3 text-xs font-bold text-ink-2 transition active:bg-surface-2 disabled:opacity-60"
-            >
-              <Trash2 size={14} />
-              移出清单
-            </button>
           <button
             type="button"
             onClick={() => candidate.addedTaskId && onOpenTask(candidate.addedTaskId)}
             disabled={!candidate.addedTaskId || busy}
-            className="inline-flex h-10 flex-1 items-center justify-center gap-1 rounded-xl bg-surface-2 px-3 text-xs font-bold text-ink-2 disabled:opacity-50"
+            className="inline-flex h-10 w-full items-center justify-center gap-1 rounded-xl bg-surface-2 px-3 text-xs font-bold text-ink-2 disabled:opacity-50"
           >
             查看已加入任务
             <ChevronRight size={14} />
           </button>
-          </>
         ) : (
           <div className="grid w-full grid-cols-3 gap-2">
             <button

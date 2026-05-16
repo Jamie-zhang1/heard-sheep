@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { PwaInstallPrompt } from "./PwaInstallPrompt";
 import { SheepVisual } from "./SheepVisual";
-import { CloseButton, DeleteConfirmSheet, EmptyState, RecordRow, SectionTitle } from "./ui";
+import { CloseButton, DeleteConfirmSheet, EmptyState, RecordRow, SectionTitle, SelectionToolbar } from "./ui";
 import { formatBytes, formatDuration } from "@/lib/format";
 import { MAX_AUDIO_BYTES, MAX_RECORDING_SECONDS, formatDurationLimit } from "@/lib/asr/limits";
 import { createSpeechRecognition, isBrowserAsrAvailable } from "@/lib/asr/client";
@@ -75,8 +75,10 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
   const router = useRouter();
   const [recordItems, setRecordItems] = useState(records);
   const [overlay, setOverlay] = useState<Overlay>("none");
-  const [deleteTarget, setDeleteTarget] = useState<RecordItem | null>(null);
-  const [deletingRecordId, setDeletingRecordId] = useState<string | null>(null);
+  const [selectingRecent, setSelectingRecent] = useState(false);
+  const [selectedRecentIds, setSelectedRecentIds] = useState<string[]>([]);
+  const [deleteRecentOpen, setDeleteRecentOpen] = useState(false);
+  const [deletingRecent, setDeletingRecent] = useState(false);
   const [recorder, setRecorder] = useState<MediaRecorder | null>(null);
   const [recordingStatus, setRecordingStatus] = useState<"recording" | "paused">("recording");
   const [seconds, setSeconds] = useState(0);
@@ -142,6 +144,8 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
   }, [records]);
 
   const recentRecords = useMemo(() => recordItems.slice(0, 3), [recordItems]);
+  const selectedRecentVisibleIds = selectedRecentIds.filter((id) => recentRecords.some((record) => record.id === id));
+  const allRecentSelected = recentRecords.length > 0 && selectedRecentVisibleIds.length === recentRecords.length;
 
   useEffect(() => {
     if (overlay !== "record" || recordingStatus !== "recording") return;
@@ -607,19 +611,28 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
     router.push(`/task/${task.id}`);
   }
 
-  async function deleteRecentRecord() {
-    if (!deleteTarget) return;
-    setDeletingRecordId(deleteTarget.id);
+  function toggleRecentSelected(id: string) {
+    setSelectedRecentIds((items) => (items.includes(id) ? items.filter((item) => item !== id) : [...items, id]));
+  }
+
+  function toggleAllRecent() {
+    setSelectedRecentIds(allRecentSelected ? [] : recentRecords.map((record) => record.id));
+  }
+
+  async function deleteSelectedRecentRecords() {
+    if (!selectedRecentVisibleIds.length) return;
+    setDeletingRecent(true);
     try {
-      const response = await fetch(apiPath(`/api/records/${deleteTarget.id}`), {
-        method: "DELETE"
-      });
-      if (!response.ok) return;
-      setRecordItems((items) => items.filter((record) => record.id !== deleteTarget.id));
-      setDeleteTarget(null);
+      for (const id of selectedRecentVisibleIds) {
+        await fetch(apiPath(`/api/records/${id}`), { method: "DELETE" });
+      }
+      setRecordItems((items) => items.filter((record) => !selectedRecentVisibleIds.includes(record.id)));
+      setSelectedRecentIds([]);
+      setSelectingRecent(false);
+      setDeleteRecentOpen(false);
       router.refresh();
     } finally {
-      setDeletingRecordId(null);
+      setDeletingRecent(false);
     }
   }
 
@@ -696,11 +709,33 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
         <SectionTitle
           title="最近分析"
           action={
-            <button onClick={() => router.push("/tasks")} className="text-xs font-semibold text-neutral-400">
-              查看全部 ›
-            </button>
+            <div className="flex items-center gap-3">
+              {recentRecords.length > 0 && (
+                <button
+                  onClick={() => {
+                    setSelectingRecent((value) => !value);
+                    setSelectedRecentIds([]);
+                  }}
+                  className="text-xs font-semibold text-brand"
+                >
+                  {selectingRecent ? "完成" : "管理"}
+                </button>
+              )}
+              <button onClick={() => router.push("/tasks")} className="text-xs font-semibold text-neutral-400">
+                查看全部 ›
+              </button>
+            </div>
           }
         />
+        {selectingRecent && recentRecords.length > 0 && (
+          <SelectionToolbar
+            selectedCount={selectedRecentVisibleIds.length}
+            allSelected={allRecentSelected}
+            deleting={deletingRecent}
+            onToggleAll={toggleAllRecent}
+            onDelete={() => setDeleteRecentOpen(true)}
+          />
+        )}
         <div>
           {recentRecords.length ? (
             recentRecords.map((record) => (
@@ -709,8 +744,9 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
                 record={record}
                 href={`/result/${record.id}`}
                 showProgress
-                onDelete={() => setDeleteTarget(record)}
-                deleteDisabled={deletingRecordId === record.id}
+                selectionMode={selectingRecent}
+                selected={selectedRecentIds.includes(record.id)}
+                onSelect={() => toggleRecentSelected(record.id)}
               />
             ))
           ) : (
@@ -1148,13 +1184,13 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
         />
       )}
 
-      {deleteTarget && (
+      {deleteRecentOpen && (
         <DeleteConfirmSheet
-          title="删除最近记录"
-          description="会删除这条分析记录、候选任务和已加入任务，历史页与任务页也会同步移除。"
-          deleting={deletingRecordId === deleteTarget.id}
-          onCancel={() => setDeleteTarget(null)}
-          onConfirm={deleteRecentRecord}
+          title="删除所选记录"
+          description={`会删除 ${selectedRecentVisibleIds.length} 条分析记录、候选任务和已加入任务，历史页与任务页也会同步移除。`}
+          deleting={deletingRecent}
+          onCancel={() => setDeleteRecentOpen(false)}
+          onConfirm={deleteSelectedRecentRecords}
         />
       )}
     </>

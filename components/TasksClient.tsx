@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CheckCircle2, ChevronRight, SlidersHorizontal, Trash2 } from "lucide-react";
-import { ConfirmationBadge, DeleteConfirmSheet, EmptyState, LabelPill, PriorityBadge, StatusBadge } from "./ui";
+import { Check, CheckCircle2, ChevronRight, SlidersHorizontal } from "lucide-react";
+import { ConfirmationBadge, DeleteConfirmSheet, EmptyState, LabelPill, PriorityBadge, SelectionToolbar, StatusBadge } from "./ui";
 import { apiPath } from "@/lib/api-path";
 import { formatDateTime } from "@/lib/format";
 import { primaryLabelId } from "@/lib/labels";
@@ -46,8 +46,10 @@ export function TasksClient({ records }: { records: RecordItem[] }) {
   const [filter, setFilter] = useState<Filter>(initialFilter);
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>("all");
   const [showFilters, setShowFilters] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<RecordItem | null>(null);
-  const [deletingRecordId, setDeletingRecordId] = useState<string | null>(null);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedRecordIds, setSelectedRecordIds] = useState<string[]>([]);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     setItems(records);
@@ -81,21 +83,38 @@ export function TasksClient({ records }: { records: RecordItem[] }) {
     const priorityMatched = priorityFilter === "all" || row.topPriority === priorityFilter;
     return statusMatched && priorityMatched;
   });
+  const selectedVisibleIds = selectedRecordIds.filter((id) => visibleRows.some((row) => row.record.id === id));
+  const allVisibleSelected = visibleRows.length > 0 && selectedVisibleIds.length === visibleRows.length;
 
-  async function deleteTasksForRecord() {
-    if (!deleteTarget) return;
-    setDeletingRecordId(deleteTarget.id);
+  function toggleSelectedRecord(id: string) {
+    setSelectedRecordIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
+  }
+
+  function toggleAllVisible() {
+    setSelectedRecordIds(allVisibleSelected ? [] : visibleRows.map((row) => row.record.id));
+  }
+
+  async function deleteSelectedTaskGroups() {
+    if (!selectedVisibleIds.length) return;
+    setDeleting(true);
     try {
-      const response = await fetch(apiPath(`/api/records/${deleteTarget.id}/tasks`), {
-        method: "DELETE"
-      });
-      if (!response.ok) return;
-      const data = (await response.json()) as { record: RecordItem };
-      setItems((current) => current.map((record) => (record.id === data.record.id ? data.record : record)));
-      setDeleteTarget(null);
+      const updatedRecords: RecordItem[] = [];
+      for (const id of selectedVisibleIds) {
+        const response = await fetch(apiPath(`/api/records/${id}/tasks`), { method: "DELETE" });
+        if (response.ok) {
+          const data = (await response.json()) as { record: RecordItem };
+          updatedRecords.push(data.record);
+        }
+      }
+      setItems((current) =>
+        current.map((record) => updatedRecords.find((updated) => updated.id === record.id) ?? record)
+      );
+      setSelectedRecordIds([]);
+      setSelectionMode(false);
+      setDeleteOpen(false);
       router.refresh();
     } finally {
-      setDeletingRecordId(null);
+      setDeleting(false);
     }
   }
 
@@ -109,15 +128,27 @@ export function TasksClient({ records }: { records: RecordItem[] }) {
               {pendingRows.length} 组待处理任务 · {pendingTaskCount} 条待办
             </p>
           </div>
-          <button
-            onClick={() => setShowFilters((value) => !value)}
-            className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-xl px-3 text-xs font-semibold transition active:scale-[0.98] ${
-              showFilters ? "bg-brand-light text-brand" : "bg-surface-2 text-ink-2"
-            }`}
-          >
-            <SlidersHorizontal size={14} />
-            筛选
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              onClick={() => {
+                setSelectionMode((value) => !value);
+                setSelectedRecordIds([]);
+              }}
+              disabled={!visibleRows.length}
+              className="inline-flex h-9 items-center justify-center rounded-xl bg-brand-light px-3 text-xs font-bold text-brand transition active:scale-[0.98] disabled:opacity-50"
+            >
+              {selectionMode ? "完成" : "管理"}
+            </button>
+            <button
+              onClick={() => setShowFilters((value) => !value)}
+              className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-xl px-3 text-xs font-semibold transition active:scale-[0.98] ${
+                showFilters ? "bg-brand-light text-brand" : "bg-surface-2 text-ink-2"
+              }`}
+            >
+              <SlidersHorizontal size={14} />
+              筛选
+            </button>
+          </div>
         </div>
       </header>
 
@@ -158,14 +189,25 @@ export function TasksClient({ records }: { records: RecordItem[] }) {
       )}
 
       <main className="safe-scroll px-5 py-1">
+        {selectionMode && visibleRows.length > 0 && (
+          <SelectionToolbar
+            selectedCount={selectedVisibleIds.length}
+            allSelected={allVisibleSelected}
+            deleting={deleting}
+            deleteLabel="移出所选"
+            onToggleAll={toggleAllVisible}
+            onDelete={() => setDeleteOpen(true)}
+          />
+        )}
         {visibleRows.length ? (
           <div className="space-y-3">
             {visibleRows.map((row) => (
               <AnalysisTaskCard
                 key={row.record.id}
                 row={row}
-                onDelete={() => setDeleteTarget(row.record)}
-                deleteDisabled={deletingRecordId === row.record.id}
+                selectionMode={selectionMode}
+                selected={selectedRecordIds.includes(row.record.id)}
+                onSelect={() => toggleSelectedRecord(row.record.id)}
               />
             ))}
           </div>
@@ -174,13 +216,13 @@ export function TasksClient({ records }: { records: RecordItem[] }) {
         )}
       </main>
 
-      {deleteTarget && (
+      {deleteOpen && (
         <DeleteConfirmSheet
-          title="移出任务列表"
-          description="只会删除这条分析下已加入的正式任务，历史记录和 AI 候选任务仍会保留，可回到结果页重新加入。"
-          deleting={deletingRecordId === deleteTarget.id}
-          onCancel={() => setDeleteTarget(null)}
-          onConfirm={deleteTasksForRecord}
+          title="移出所选任务"
+          description={`会移出 ${selectedVisibleIds.length} 组已加入任务；历史记录和 AI 候选任务仍会保留，可回到结果页重新加入。`}
+          deleting={deleting}
+          onCancel={() => setDeleteOpen(false)}
+          onConfirm={deleteSelectedTaskGroups}
         />
       )}
     </>
@@ -189,12 +231,14 @@ export function TasksClient({ records }: { records: RecordItem[] }) {
 
 function AnalysisTaskCard({
   row,
-  onDelete,
-  deleteDisabled
+  selectionMode,
+  selected,
+  onSelect
 }: {
   row: AnalysisRow;
-  onDelete: () => void;
-  deleteDisabled?: boolean;
+  selectionMode: boolean;
+  selected: boolean;
+  onSelect: () => void;
 }) {
   const { record, total, done, pending, needConfirm, status, topPriority } = row;
   const progress = total ? Math.round((done / total) * 100) : 0;
@@ -204,11 +248,29 @@ function AnalysisTaskCard({
 
   return (
     <div className="rounded-2xl bg-white p-4 shadow-card transition hover:brightness-[0.98]">
-      <Link href={href} className="block active:scale-[0.99]">
-        <div className="mb-2 flex items-start justify-between gap-3">
-          <h3 className="min-w-0 flex-1 text-[16px] font-black leading-snug text-ink">{record.title}</h3>
-          <StatusBadge status={status} />
+      <div className="mb-2 flex items-start gap-3">
+        {selectionMode && (
+          <button
+            type="button"
+            onClick={onSelect}
+            className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition ${
+              selected ? "border-brand bg-brand text-white" : "border-line bg-white text-transparent"
+            }`}
+            aria-label={selected ? "取消选择任务" : "选择任务"}
+          >
+            <Check size={15} strokeWidth={3} />
+          </button>
+        )}
+        <div className="min-w-0 flex-1">
+          <Link href={href} className="block active:scale-[0.99]">
+            <div className="flex items-start justify-between gap-3">
+              <h3 className="min-w-0 flex-1 text-[16px] font-black leading-snug text-ink">{record.title}</h3>
+              <StatusBadge status={status} />
+            </div>
+          </Link>
         </div>
+      </div>
+      <Link href={href} className="block active:scale-[0.99]">
         <p className="line-clamp-2 text-[13px] leading-6 text-ink-2">{record.summary}</p>
 
         <div className="mt-3 flex items-center gap-2">
@@ -233,15 +295,6 @@ function AnalysisTaskCard({
           <span className="truncate">{pending} 条待处理 · {formatDateTime(record.createdAt)}</span>
         </Link>
         <div className="flex shrink-0 items-center gap-2">
-          <button
-            type="button"
-            onClick={onDelete}
-            disabled={deleteDisabled}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-2 text-muted transition active:scale-95 active:bg-line disabled:opacity-50"
-            aria-label="删除任务"
-          >
-            <Trash2 size={14} />
-          </button>
           <Link href={href} className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-2 text-neutral-400">
             <ChevronRight size={16} />
           </Link>

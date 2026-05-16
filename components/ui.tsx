@@ -86,6 +86,45 @@ export function DeleteConfirmSheet({
   );
 }
 
+export function SelectionToolbar({
+  selectedCount,
+  allSelected,
+  deleting = false,
+  deleteLabel = "删除所选",
+  onToggleAll,
+  onDelete
+}: {
+  selectedCount: number;
+  allSelected: boolean;
+  deleting?: boolean;
+  deleteLabel?: string;
+  onToggleAll: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div className="mb-3 flex items-center justify-between gap-2 rounded-2xl bg-white p-2 shadow-card">
+      <button
+        type="button"
+        onClick={onToggleAll}
+        className="inline-flex h-9 items-center justify-center rounded-xl border border-line bg-white px-3 text-xs font-bold text-ink-2 transition active:bg-surface-2"
+      >
+        {allSelected ? "取消全选" : "全选"}
+      </button>
+      <div className="min-w-0 flex-1 text-center text-[11px] font-semibold text-muted">
+        已选 {selectedCount} 项
+      </div>
+      <button
+        type="button"
+        onClick={onDelete}
+        disabled={!selectedCount || deleting}
+        className="inline-flex h-9 items-center justify-center rounded-xl bg-ink px-3 text-xs font-bold text-white transition active:scale-[0.99] disabled:opacity-50"
+      >
+        {deleting ? "删除中" : deleteLabel}
+      </button>
+    </div>
+  );
+}
+
 export function Pill({
   children,
   tone = "outline",
@@ -251,14 +290,16 @@ export function RecordRow({
   record,
   href,
   showProgress = false,
-  onDelete,
-  deleteDisabled = false
+  selectionMode = false,
+  selected = false,
+  onSelect
 }: {
   record: RecordItem;
   href: string;
   showProgress?: boolean;
-  onDelete?: () => void;
-  deleteDisabled?: boolean;
+  selectionMode?: boolean;
+  selected?: boolean;
+  onSelect?: () => void;
 }) {
   const candidates = record.candidateTasks ?? [];
   const candidateCount = candidates.length;
@@ -268,6 +309,18 @@ export function RecordRow({
   const labelId = primaryLabelId(record.tasks[0]?.labels ?? candidates[0]?.labels, record.source);
   return (
     <div className="mx-0 mb-3 flex items-center gap-2 rounded-2xl bg-white p-3 shadow-card transition hover:brightness-[0.98]">
+      {selectionMode && (
+        <button
+          type="button"
+          onClick={onSelect}
+          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition ${
+            selected ? "border-brand bg-brand text-white" : "border-line bg-white text-transparent"
+          }`}
+          aria-label={selected ? "取消选择" : "选择记录"}
+        >
+          <CheckMarkIcon />
+        </button>
+      )}
       <Link href={href} className="flex min-w-0 flex-1 items-center gap-3 transition active:scale-[0.99]">
       <div className="flex w-[88px] shrink-0 items-center justify-center">
         <LabelPill id={labelId} compact />
@@ -297,18 +350,15 @@ export function RecordRow({
       </div>
         <ChevronRight size={18} className="shrink-0 text-neutral-400" />
       </Link>
-      {onDelete && (
-        <button
-          type="button"
-          onClick={onDelete}
-          disabled={deleteDisabled}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-2 text-muted transition active:scale-95 active:bg-line disabled:opacity-50"
-          aria-label="删除记录"
-        >
-          <Trash2 size={15} />
-        </button>
-      )}
     </div>
+  );
+}
+
+function CheckMarkIcon() {
+  return (
+    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
+      <path d="M3.5 8.1 6.6 11l5.9-6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 

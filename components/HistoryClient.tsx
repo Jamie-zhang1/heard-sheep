@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search, X } from "lucide-react";
-import { DeleteConfirmSheet, EmptyState, RecordRow } from "./ui";
+import { DeleteConfirmSheet, EmptyState, RecordRow, SelectionToolbar } from "./ui";
 import { apiPath } from "@/lib/api-path";
 import type { RecordItem } from "@/lib/types";
 
@@ -11,8 +11,10 @@ export function HistoryClient({ records, filter }: { records: RecordItem[]; filt
   const router = useRouter();
   const [items, setItems] = useState(records);
   const [query, setQuery] = useState("");
-  const [deleteTarget, setDeleteTarget] = useState<RecordItem | null>(null);
-  const [deletingRecordId, setDeletingRecordId] = useState<string | null>(null);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const isRecordingFilter = filter === "recordings";
 
   useEffect(() => {
@@ -40,20 +42,31 @@ export function HistoryClient({ records, filter }: { records: RecordItem[]; filt
 
   const grouped = useMemo(() => groupByDay(filteredRecords), [filteredRecords]);
   const title = isRecordingFilter ? "全部录音记录" : "历史";
+  const selectedVisibleIds = selectedIds.filter((id) => filteredRecords.some((record) => record.id === id));
+  const allVisibleSelected = filteredRecords.length > 0 && selectedVisibleIds.length === filteredRecords.length;
 
-  async function deleteHistoryRecord() {
-    if (!deleteTarget) return;
-    setDeletingRecordId(deleteTarget.id);
+  function toggleSelected(id: string) {
+    setSelectedIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
+  }
+
+  function toggleAllVisible() {
+    setSelectedIds(allVisibleSelected ? [] : filteredRecords.map((record) => record.id));
+  }
+
+  async function deleteSelectedHistoryRecords() {
+    if (!selectedVisibleIds.length) return;
+    setDeleting(true);
     try {
-      const response = await fetch(apiPath(`/api/records/${deleteTarget.id}`), {
-        method: "DELETE"
-      });
-      if (!response.ok) return;
-      setItems((current) => current.filter((record) => record.id !== deleteTarget.id));
-      setDeleteTarget(null);
+      for (const id of selectedVisibleIds) {
+        await fetch(apiPath(`/api/records/${id}`), { method: "DELETE" });
+      }
+      setItems((current) => current.filter((record) => !selectedVisibleIds.includes(record.id)));
+      setSelectedIds([]);
+      setSelectionMode(false);
+      setDeleteOpen(false);
       router.refresh();
     } finally {
-      setDeletingRecordId(null);
+      setDeleting(false);
     }
   }
 
@@ -67,9 +80,23 @@ export function HistoryClient({ records, filter }: { records: RecordItem[]; filt
               {isRecordingFilter ? "来自现场录音的分析记录" : "按时间回看录音、转写和分析结果"}
             </p>
           </div>
-          <span className="inline-flex h-7 shrink-0 items-center justify-center rounded-full bg-surface-2 px-3 text-[11px] font-semibold text-muted">
-            共 {filteredRecords.length} 条
-          </span>
+          <div className="flex shrink-0 items-center gap-2">
+            <span className="inline-flex h-7 items-center justify-center rounded-full bg-surface-2 px-3 text-[11px] font-semibold text-muted">
+              共 {filteredRecords.length} 条
+            </span>
+            {filteredRecords.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectionMode((value) => !value);
+                  setSelectedIds([]);
+                }}
+                className="inline-flex h-7 items-center justify-center rounded-full bg-brand-light px-3 text-[11px] font-bold text-brand"
+              >
+                {selectionMode ? "完成" : "管理"}
+              </button>
+            )}
+          </div>
         </div>
         <div className={`flex items-center gap-2.5 rounded-2xl border bg-white px-4 py-3 shadow-card transition ${query ? "border-brand" : "border-line"}`}>
           <Search size={16} className="shrink-0 text-muted" />
@@ -92,6 +119,15 @@ export function HistoryClient({ records, filter }: { records: RecordItem[]; filt
       </header>
 
       <main className="safe-scroll px-5 py-1">
+        {selectionMode && filteredRecords.length > 0 && (
+          <SelectionToolbar
+            selectedCount={selectedVisibleIds.length}
+            allSelected={allVisibleSelected}
+            deleting={deleting}
+            onToggleAll={toggleAllVisible}
+            onDelete={() => setDeleteOpen(true)}
+          />
+        )}
         {filteredRecords.length ? (
           Object.entries(grouped).map(([day, dayItems]) => (
             <section key={day}>
@@ -105,8 +141,9 @@ export function HistoryClient({ records, filter }: { records: RecordItem[]; filt
                   key={record.id}
                   record={record}
                   href={`/result/${record.id}`}
-                  onDelete={() => setDeleteTarget(record)}
-                  deleteDisabled={deletingRecordId === record.id}
+                  selectionMode={selectionMode}
+                  selected={selectedIds.includes(record.id)}
+                  onSelect={() => toggleSelected(record.id)}
                 />
               ))}
             </section>
@@ -119,13 +156,13 @@ export function HistoryClient({ records, filter }: { records: RecordItem[]; filt
         )}
       </main>
 
-      {deleteTarget && (
+      {deleteOpen && (
         <DeleteConfirmSheet
-          title="删除历史记录"
-          description="会删除这条分析记录、候选任务和已加入任务。删除后无法在历史页继续回看。"
-          deleting={deletingRecordId === deleteTarget.id}
-          onCancel={() => setDeleteTarget(null)}
-          onConfirm={deleteHistoryRecord}
+          title="删除所选历史"
+          description={`会删除 ${selectedVisibleIds.length} 条分析记录、候选任务和已加入任务。删除后无法在历史页继续回看。`}
+          deleting={deleting}
+          onCancel={() => setDeleteOpen(false)}
+          onConfirm={deleteSelectedHistoryRecords}
         />
       )}
     </>
