@@ -208,15 +208,25 @@ export async function addTasksFromCandidates(
 export async function deleteTask(taskId: string) {
   const records = await readRecords();
   for (const record of records) {
-    const length = record.tasks.length;
+    const task = record.tasks.find((item) => item.id === taskId);
+    if (!task) continue;
+
     record.tasks = record.tasks.filter((task) => task.id !== taskId);
-    if (record.tasks.length !== length) {
-      record.updatedAt = new Date().toISOString();
-      await writeRecords(records);
-      return true;
-    }
+    record.candidateTasks = record.candidateTasks?.map((candidate) =>
+      candidate.addedTaskId === taskId
+        ? {
+            ...candidate,
+            candidateStatus: "candidate",
+            addedTaskId: undefined,
+            addedAt: undefined
+          }
+        : candidate
+    );
+    record.updatedAt = new Date().toISOString();
+    await writeRecords(records);
+    return { task, record };
   }
-  return false;
+  return null;
 }
 
 function toOrganizedText(analysis: AnalyzeResult) {

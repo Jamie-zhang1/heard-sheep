@@ -13,7 +13,8 @@ import {
   Plus,
   Route,
   Save,
-  Text
+  Text,
+  Trash2
 } from "lucide-react";
 import {
   CloseButton,
@@ -204,6 +205,23 @@ export function ResultView({ record }: { record: RecordItem }) {
     }
   }
 
+  async function deleteJoinedTask(candidate: CandidateTaskItem) {
+    if (!candidate.addedTaskId || busyId || batchSaving) return;
+    setBusyId(candidate.id);
+    try {
+      const response = await fetch(apiPath(`/api/tasks/${candidate.addedTaskId}`), {
+        method: "DELETE"
+      });
+      if (!response.ok) throw new Error("delete task failed");
+      const data = (await response.json()) as { record: RecordItem };
+      setJoinedTasks(data.record.tasks);
+      setCandidates(initialCandidateTasks(data.record));
+      router.refresh();
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   return (
     <>
       <header className="flex shrink-0 items-center gap-3 px-5 pb-3 pt-4">
@@ -350,6 +368,7 @@ export function ResultView({ record }: { record: RecordItem }) {
                   onEdit={() => openEdit(candidate)}
                   onConfirm={() => openConfirm(candidate)}
                   onAdd={() => addCandidate(candidate)}
+                  onDelete={() => deleteJoinedTask(candidate)}
                   onOpenTask={(taskId) => router.push(`/task/${taskId}`)}
                 />
               ))
@@ -596,6 +615,7 @@ function CandidateTaskCard({
   onEdit,
   onConfirm,
   onAdd,
+  onDelete,
   onOpenTask
 }: {
   candidate: CandidateTaskItem;
@@ -605,6 +625,7 @@ function CandidateTaskCard({
   onEdit: () => void;
   onConfirm: () => void;
   onAdd: () => void;
+  onDelete: () => void;
   onOpenTask: (taskId: string) => void;
 }) {
   const added = candidate.candidateStatus === "added";
@@ -653,15 +674,26 @@ function CandidateTaskCard({
       </div>
       <div className="mt-3 flex gap-2">
         {added ? (
+          <>
+            <button
+              type="button"
+              onClick={onDelete}
+              disabled={busy}
+              className="inline-flex h-10 flex-1 items-center justify-center gap-1 rounded-xl border border-line bg-white px-3 text-xs font-bold text-ink-2 transition active:bg-surface-2 disabled:opacity-60"
+            >
+              <Trash2 size={14} />
+              移出清单
+            </button>
           <button
             type="button"
             onClick={() => candidate.addedTaskId && onOpenTask(candidate.addedTaskId)}
-            disabled={!candidate.addedTaskId}
+            disabled={!candidate.addedTaskId || busy}
             className="inline-flex h-10 flex-1 items-center justify-center gap-1 rounded-xl bg-surface-2 px-3 text-xs font-bold text-ink-2 disabled:opacity-50"
           >
             查看已加入任务
             <ChevronRight size={14} />
           </button>
+          </>
         ) : (
           <div className="grid w-full grid-cols-3 gap-2">
             <button

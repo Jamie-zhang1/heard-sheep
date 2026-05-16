@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Check, ChevronRight, Edit3, Mic, Play, Save } from "lucide-react";
+import { ArrowLeft, Check, ChevronRight, Edit3, Mic, Play, Save, Trash2 } from "lucide-react";
 import { CloseButton, LabelPill, Pill, PriorityBadge, StatusBadge, TaskLabelList, confirmationIssueCount } from "./ui";
 import { formatDateTime, formatDuration } from "@/lib/format";
 import { apiPath } from "@/lib/api-path";
@@ -14,6 +14,8 @@ export function TaskDetailClient({ initialRecord, initialTask }: { initialRecord
   const [task, setTask] = useState(initialTask);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [form, setForm] = useState(() => toForm(initialTask));
 
   const sourceLabel = initialRecord.source === "recording" ? "原始录音" : initialRecord.source === "upload" ? "上传音频" : "粘贴文本";
@@ -48,6 +50,20 @@ export function TaskDetailClient({ initialRecord, initialTask }: { initialRecord
     setEditing(false);
   }
 
+  async function deleteCurrentTask() {
+    setDeleting(true);
+    try {
+      const response = await fetch(apiPath(`/api/tasks/${task.id}`), {
+        method: "DELETE"
+      });
+      if (!response.ok) return;
+      router.replace(`/result/${initialRecord.id}?tab=tasks`);
+      router.refresh();
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <>
       <header className="flex shrink-0 items-center gap-3 px-5 pb-3 pt-4">
@@ -59,6 +75,13 @@ export function TaskDetailClient({ initialRecord, initialTask }: { initialRecord
           <ArrowLeft size={18} />
         </button>
         <h1 className="min-w-0 flex-1 truncate text-base font-bold text-ink">任务详情</h1>
+        <button
+          onClick={() => setDeleteConfirmOpen(true)}
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-2 text-ink-2"
+          aria-label="删除任务"
+        >
+          <Trash2 size={15} />
+        </button>
         <button onClick={() => setEditing(true)} className="flex items-center gap-1 rounded-full bg-surface-2 px-3 py-2 text-xs font-semibold text-ink-2">
           <Edit3 size={15} />
           编辑
@@ -259,6 +282,43 @@ export function TaskDetailClient({ initialRecord, initialTask }: { initialRecord
               <button onClick={saveEdit} disabled={saving} className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-white shadow-btn disabled:opacity-60">
                 <Save size={15} />
                 {saving ? "保存中" : "保存"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteConfirmOpen && (
+        <div className="absolute inset-0 z-40 flex items-end bg-black/30">
+          <div className="w-full rounded-t-[32px] bg-white px-6 pb-6 pt-3 shadow-sheep">
+            <div className="mx-auto mb-3 h-1 w-9 rounded bg-line" />
+            <div className="mb-2 flex items-center justify-between">
+              <div className="text-base font-black">删除任务</div>
+              <CloseButton
+                onClick={() => setDeleteConfirmOpen(false)}
+                ariaLabel="关闭删除确认"
+                className="h-10 w-10 bg-transparent hover:bg-surface-2 active:bg-surface-2"
+              />
+            </div>
+            <div className="rounded-2xl border border-line bg-white p-3.5 text-[13px] leading-6 text-ink-2 shadow-card">
+              删除后，这条任务会从任务页移除；如果它来自 AI 候选任务，结果页会恢复为可重新加入。
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmOpen(false)}
+                className="inline-flex h-11 items-center justify-center rounded-xl border border-line bg-white px-4 text-sm font-bold transition active:bg-surface-2"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={deleteCurrentTask}
+                disabled={deleting}
+                className="inline-flex h-11 items-center justify-center gap-1 rounded-xl bg-ink px-4 text-sm font-bold text-white transition active:scale-[0.99] disabled:opacity-60"
+              >
+                <Trash2 size={15} />
+                {deleting ? "删除中" : "确认删除"}
               </button>
             </div>
           </div>
