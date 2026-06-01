@@ -26,7 +26,7 @@ export const xiaomiImageProvider: VisionProvider = {
 
   async extractText(input: VisionExtractionInput): Promise<VisionExtractionResult> {
     const apiKey = process.env.XIAOMI_API_KEY || process.env.MIMO_API_KEY;
-    const baseUrl = (process.env.XIAOMI_BASE_URL || "https://api.xiaomimimo.com/v1").replace(/\/$/, "");
+    const baseUrl = normalizeXiaomiBaseUrl(process.env.XIAOMI_BASE_URL || process.env.MIMO_BASE_URL);
     const model = process.env.XIAOMI_IMAGE_MODEL || "mimo-v2.5";
     const timeoutMs = Number(process.env.XIAOMI_TIMEOUT_MS || 60000);
     const { base64, mimeType, dataUrl, approxBytes } = normalizeImage(input);
@@ -95,6 +95,13 @@ export const xiaomiImageProvider: VisionProvider = {
   }
 };
 
+function normalizeXiaomiBaseUrl(value?: string) {
+  const baseUrl = (value || "https://api.xiaomimimo.com/v1").replace(/\/$/, "");
+  if (baseUrl.includes("token-plan")) {
+    throw new Error("XIAOMI_BASE_URL points to a Token Plan endpoint. heard-sheep backend requires a pay-as-you-go MiMo API key with https://api.xiaomimimo.com/v1.");
+  }
+  return baseUrl;
+}
 function buildMessages(dataUrl: string): ChatMessage[] {
   return [
     {
@@ -139,3 +146,5 @@ function formatZodError(error: z.ZodError) {
 function safePreview(text: string) {
   return text.replace(/\s+/g, " ").slice(0, 80);
 }
+
+

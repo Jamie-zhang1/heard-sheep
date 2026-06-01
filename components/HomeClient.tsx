@@ -1054,7 +1054,7 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
       )}
 
       {overlay === "understanding-image" && (
-        <ProcessingOverlay title="正在识别图片内容..." subtitle="先提取文字，再交给 DeepSeek 生成计划" steps={IMAGE_STEPS} activeStep={processStep} />
+        <ProcessingOverlay title="正在识别图片内容..." subtitle="先提取文字，再交给 MiMo 生成计划" steps={IMAGE_STEPS} activeStep={processStep} />
       )}
 
       {overlay === "confirm" && transcript && (
@@ -1333,3 +1333,4 @@ function formatTimer(seconds: number) {
   const rest = seconds % 60;
   return `${String(minutes).padStart(2, "0")}:${String(rest).padStart(2, "0")}`;
 }
+

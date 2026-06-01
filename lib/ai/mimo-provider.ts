@@ -18,12 +18,12 @@ const chatCompletionSchema = z.object({
 });
 
 export async function analyzeWithMimo(input: AnalyzeInput): Promise<AnalyzeProviderResult> {
-  const baseUrl = (process.env.MIMO_BASE_URL || process.env.BASE_URL || "https://token-plan-cn.xiaomimimo.com/v1").replace(/\/$/, "");
+  const baseUrl = normalizeMimoBaseUrl(process.env.MIMO_BASE_URL || process.env.XIAOMI_BASE_URL);
   const model = process.env.MIMO_MODEL || "mimo-v2.5-pro";
-  const apiKey = process.env.MIMO_API_KEY;
+  const apiKey = process.env.MIMO_API_KEY || process.env.XIAOMI_API_KEY;
 
   if (!apiKey) {
-    throw new Error("MIMO_API_KEY is not configured");
+    throw new Error("MIMO_API_KEY or XIAOMI_API_KEY is not configured");
   }
 
   const firstOutput = await requestChatCompletion({
@@ -55,6 +55,13 @@ export async function analyzeWithMimo(input: AnalyzeInput): Promise<AnalyzeProvi
   throw new Error(`MiMo output validation failed: ${repairedParsed.error}`);
 }
 
+function normalizeMimoBaseUrl(value?: string) {
+  const baseUrl = (value || "https://api.xiaomimimo.com/v1").replace(/\/$/, "");
+  if (baseUrl.includes("token-plan")) {
+    throw new Error("MIMO_BASE_URL points to a Token Plan endpoint. heard-sheep backend requires a pay-as-you-go MiMo API key with https://api.xiaomimimo.com/v1.");
+  }
+  return baseUrl;
+}
 function withMeta(result: AnalyzeResult, model: string): AnalyzeProviderResult {
   const meta = {
     provider: "mimo" as const,
@@ -118,6 +125,7 @@ async function requestChatCompletion({
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
+      "api-key": apiKey,
       "Content-Type": "application/json"
     },
     signal: AbortSignal.timeout(timeoutMs),
@@ -157,3 +165,5 @@ async function requestChatCompletion({
   console.log(`[AI] MiMo response length: ${content.length} chars`);
   return content;
 }
+
+

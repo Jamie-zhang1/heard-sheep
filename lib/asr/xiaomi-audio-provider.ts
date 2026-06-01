@@ -31,7 +31,7 @@ export type XiaomiAudioTranscribeInput = {
 
 export type XiaomiAudioTranscribeResult = {
   text: string;
-  provider: "xiaomi-audio" | "mock" | "openai-compatible";
+  provider: "xiaomi-audio" | "mock";
   model?: string;
   fallbackUsed: boolean;
   error?: string;
@@ -42,7 +42,7 @@ export const xiaomiAudioProvider: AsrProvider = {
 
   async transcribe(input: TranscribeInput): Promise<TranscribeResult> {
     const apiKey = process.env.XIAOMI_API_KEY || process.env.MIMO_API_KEY || process.env.ASR_API_KEY;
-    const baseUrl = (process.env.XIAOMI_BASE_URL || "https://api.xiaomimimo.com/v1").replace(/\/$/, "");
+    const baseUrl = normalizeXiaomiBaseUrl(process.env.XIAOMI_BASE_URL || process.env.MIMO_BASE_URL);
     const model = process.env.XIAOMI_AUDIO_MODEL || "mimo-v2.5";
     const timeoutMs = Number(process.env.XIAOMI_TIMEOUT_MS || process.env.XIAOMI_AUDIO_TIMEOUT_MS || process.env.ASR_TIMEOUT_MS || 60000);
 
@@ -109,6 +109,13 @@ export const xiaomiAudioProvider: AsrProvider = {
   }
 };
 
+function normalizeXiaomiBaseUrl(value?: string) {
+  const baseUrl = (value || "https://api.xiaomimimo.com/v1").replace(/\/$/, "");
+  if (baseUrl.includes("token-plan")) {
+    throw new Error("XIAOMI_BASE_URL points to a Token Plan endpoint. heard-sheep backend requires a pay-as-you-go MiMo API key with https://api.xiaomimimo.com/v1.");
+  }
+  return baseUrl;
+}
 function buildMessages(audio: { base64: string; mimeType: string; format: string; dataUrl: string }): ChatMessage[] {
   const inputMode = (process.env.XIAOMI_AUDIO_INPUT_MODE || "input_audio").toLowerCase();
   const audioBlock =
@@ -195,3 +202,5 @@ function formatZodError(error: z.ZodError) {
 function safePreview(text: string) {
   return text.replace(/\s+/g, " ").slice(0, 80);
 }
+
+

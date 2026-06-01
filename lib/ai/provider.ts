@@ -1,5 +1,4 @@
 import type { AnalyzeMeta, AnalyzeResult, SourceType } from "@/lib/types";
-import { analyzeWithDeepSeek } from "./deepseek-provider";
 import { analyzeWithMimo } from "./mimo-provider";
 import { analyzeWithMock } from "./mock-provider";
 
@@ -26,29 +25,25 @@ export class AnalyzeProviderError extends Error {
   }
 }
 
-type RealProviderConfig =
-  | {
-      id: "deepseek";
-      displayName: "DeepSeek";
-      keyName: "DEEPSEEK_API_KEY";
-      apiKey?: string;
-      model: string;
-      supportsImages: boolean;
-    }
-  | {
-      id: "mimo";
-      displayName: "MiMo";
-      keyName: "MIMO_API_KEY";
-      apiKey?: string;
-      model: string;
-      supportsImages: boolean;
-    };
+type RealProviderConfig = {
+  id: "mimo";
+  displayName: "Xiaomi MiMo";
+  keyName: "MIMO_API_KEY or XIAOMI_API_KEY";
+  apiKey?: string;
+  model: string;
+  supportsImages: boolean;
+};
 
 export async function analyzeText(input: AnalyzeInput): Promise<AnalyzeProviderResult> {
-  const provider = (process.env.AI_PROVIDER || "deepseek").toLowerCase();
+  const configuredProvider = (process.env.AI_PROVIDER || "mimo").toLowerCase();
+  const provider = configuredProvider === "mock" ? "mock" : "mimo";
   const allowFallback = process.env.AI_ALLOW_MOCK_FALLBACK !== "false";
-  const providerConfig = getProviderConfig(provider);
+  const providerConfig = getProviderConfig();
   const hasApiKey = !!providerConfig.apiKey;
+
+  if (configuredProvider !== "mimo" && configuredProvider !== "mock") {
+    console.warn(`[AI] Unsupported/legacy AI_PROVIDER=${configuredProvider}; using Xiaomi MiMo instead.`);
+  }
 
   console.log(
     `[AI] Provider selection: AI_PROVIDER=${provider}, key=${hasApiKey ? "set" : "not set"}, AI_ALLOW_MOCK_FALLBACK=${allowFallback}`
@@ -74,9 +69,7 @@ export async function analyzeText(input: AnalyzeInput): Promise<AnalyzeProviderR
 
   try {
     console.log(`[AI] Calling ${providerConfig.displayName} provider (model=${providerConfig.model})`);
-    const result = providerConfig.id === "mimo"
-      ? await analyzeWithMimo(input)
-      : await analyzeWithDeepSeek(input);
+    const result = await analyzeWithMimo(input);
     console.log(`[AI] ${providerConfig.displayName} provider succeeded`);
     return result;
   } catch (error) {
@@ -102,24 +95,13 @@ export async function analyzeText(input: AnalyzeInput): Promise<AnalyzeProviderR
   }
 }
 
-function getProviderConfig(provider: string): RealProviderConfig {
-  if (provider === "mimo") {
-    return {
-      id: "mimo",
-      displayName: "MiMo",
-      keyName: "MIMO_API_KEY",
-      apiKey: process.env.MIMO_API_KEY,
-      model: process.env.MIMO_MODEL || "mimo-v2.5-pro",
-      supportsImages: process.env.MIMO_SUPPORTS_IMAGES === "true"
-    };
-  }
-
+function getProviderConfig(): RealProviderConfig {
   return {
-    id: "deepseek",
-    displayName: "DeepSeek",
-    keyName: "DEEPSEEK_API_KEY",
-    apiKey: process.env.DEEPSEEK_API_KEY || process.env.DeepSeek_API_KEY,
-    model: process.env.DEEPSEEK_MODEL || process.env.DeepSeek_MODEL || "deepseek-v4-flash",
-    supportsImages: process.env.DEEPSEEK_SUPPORTS_IMAGES === "true"
+    id: "mimo",
+    displayName: "Xiaomi MiMo",
+    keyName: "MIMO_API_KEY or XIAOMI_API_KEY",
+    apiKey: process.env.MIMO_API_KEY || process.env.XIAOMI_API_KEY,
+    model: process.env.MIMO_MODEL || "mimo-v2.5-pro",
+    supportsImages: true
   };
 }

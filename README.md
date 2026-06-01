@@ -1,9 +1,8 @@
 # 听到了咩 / heard-sheep
 
-> Current AI default: DeepSeek V4. Use `AI_PROVIDER=deepseek`,
-> `DEEPSEEK_BASE_URL=https://api.deepseek.com`, and
-> `DEEPSEEK_MODEL=deepseek-v4-flash`. For higher quality, switch to
-> `deepseek-v4-pro`. See [DeepSeek V4 Provider](docs/deepseek-v4-provider.md).
+> Current AI default: Xiaomi MiMo. Use `AI_PROVIDER=mimo`,
+> `MIMO_BASE_URL=https://api.xiaomimimo.com/v1`, and
+> `MIMO_MODEL=mimo-v2.5-pro` for structured task analysis. Image OCR and audio understanding use `mimo-v2.5`. See [Xiaomi MiMo Provider](docs/mimo-provider.md).
 
 以录音为主入口的 AI 语音任务助手。它面向职场个人，帮助用户把领导、同事、会议中的口头交代，转化为可执行、可确认、可追踪的任务计划。
 
@@ -23,8 +22,8 @@
 ## 当前状态
 
 - UI：移动端优先，375px 手机容器，小羊品牌视觉，奶油紫 + 黑白轻工具风。
-- 转写：浏览器端优先尝试 Web Speech API；服务端 `/api/transcribe` 已支持 Xiaomi MiMo 音频理解、OpenAI-compatible ASR provider 与 mock fallback。
-- AI：`/api/analyze` 默认支持 DeepSeek V4 OpenAI-compatible Chat Completions；未配置密钥或调用失败时可回退到 mock AI，MiMo Provider 仍作为兼容选项保留。
+- 转写：浏览器端优先尝试 Web Speech API；服务端 `/api/transcribe` 已统一使用 Xiaomi MiMo 音频理解，并保留 mock fallback。
+- AI：`/api/analyze` 默认使用 Xiaomi MiMo OpenAI-compatible Chat Completions；文本任务分析使用 `mimo-v2.5-pro`，未配置密钥或调用失败时可回退到 mock AI。
 - 图片：`/api/vision/extract-text` 已支持 Xiaomi MiMo 图片理解，上传图片后会自动提取文字并预填“确认图片文字”页；失败时仍可手动粘贴。
 - 存储：本地 JSON 文件 `data/records.json`，适合 MVP 演示和本地开发。
 - 部署路径：默认启用 `basePath=/sheep`，本地访问地址为 `/sheep`。
@@ -38,7 +37,7 @@
 - 录音能力：麦克风授权、计时、暂停/继续、结束、录音重点标记
 - 上传音频：支持 mp3 / wav / m4a / webm
 - 粘贴转写稿：示例文本、清空、空文本/过短/过长校验
-- 图片识别：支持多图上传；先用 Xiaomi MiMo 提取图片文字，再进入确认页，确认后继续交给 DeepSeek 生成任务计划
+- 图片识别：支持多图上传；先用 Xiaomi MiMo `mimo-v2.5` 提取图片文字，再进入确认页，确认后继续交给 MiMo 生成任务计划
 
 ### 分析与任务
 
@@ -89,17 +88,12 @@ npm run start
 ```env
 NEXT_PUBLIC_BASE_PATH=/sheep
 
-AI_PROVIDER=deepseek
+AI_PROVIDER=mimo
 AI_ALLOW_MOCK_FALLBACK=true
 
-DEEPSEEK_API_KEY=
-DEEPSEEK_BASE_URL=https://api.deepseek.com
-DEEPSEEK_MODEL=deepseek-v4-flash
-DEEPSEEK_TIMEOUT_MS=60000
-
 MIMO_API_KEY=
-MIMO_BASE_URL=https://token-plan-cn.xiaomimimo.com/v1
-MIMO_MODEL=MiMo-V2.5-Pro
+MIMO_BASE_URL=https://api.xiaomimimo.com/v1
+MIMO_MODEL=mimo-v2.5-pro
 MIMO_TIMEOUT_MS=60000
 
 XIAOMI_API_KEY=
@@ -114,25 +108,17 @@ ASR_PROVIDER=xiaomi-audio
 ASR_ALLOW_MOCK_FALLBACK=true
 XIAOMI_AUDIO_MODEL=mimo-v2.5
 XIAOMI_AUDIO_INPUT_MODE=input_audio
-
-ASR_API_KEY=
-ASR_BASE_URL=https://api.openai.com/v1
-ASR_MODEL=whisper-1
-ASR_LANGUAGE=zh
-ASR_TIMEOUT_MS=60000
 ```
 
 说明：
 
-- `DEEPSEEK_API_KEY` 只在服务端读取，不要使用 `NEXT_PUBLIC_` 前缀。
-- DeepSeek 当前按 OpenAI 兼容协议接入：`https://api.deepseek.com`。
-- 默认模型推荐 `deepseek-v4-flash`，成本更低且支持 JSON Output；复杂高质量分析可改为 `deepseek-v4-pro`。
-- 未配置 `DEEPSEEK_API_KEY` 时，`/api/analyze` 自动使用 mock AI。
-- MiMo Provider 仍保留；设置 `AI_PROVIDER=mimo` 后使用 `MIMO_*` 变量。
-- `VISION_PROVIDER=xiaomi-image` 会调用 Xiaomi Chat Completions 多模态接口，使用 Base64 图片提取文字。
-- `ASR_PROVIDER=xiaomi-audio` 会调用 Xiaomi Chat Completions 多模态接口，使用 Base64 音频做转写验证。
-- `ASR_PROVIDER=openai-compatible` / `openai` / `whisper` 会调用 `${ASR_BASE_URL}/audio/transcriptions`，该能力仍保留。
-- 浏览器支持 Web Speech API 时，录音过程中会优先尝试浏览器实时识别；没有识别结果时走服务端 mock 转写。
+- `MIMO_API_KEY` / `XIAOMI_API_KEY` 只在服务端读取，不要使用 `NEXT_PUBLIC_` 前缀；heard-sheep 后端需要按量付费 API key；Token Plan key 只用于 Claude Code/OpenCode 等编程工具。
+- 当前项目后端使用 Xiaomi MiMo 按量付费 OpenAI 兼容地址：`https://api.xiaomimimo.com/v1`。
+- `/api/analyze` 使用 `mimo-v2.5-pro`，适合结构化任务拆解、JSON 输出和复杂推理。
+- `/api/vision/extract-text` 使用 `mimo-v2.5`，适合图片文字识别与简单图片理解。
+- `/api/transcribe` 使用 `mimo-v2.5` 的音频理解能力，使用 Base64 音频块进行转写。
+- 未配置 MiMo API Key 或真实调用失败时，可按 `*_ALLOW_MOCK_FALLBACK` 配置回退到 mock，便于本地演示。
+- 浏览器支持 Web Speech API 时，录音过程中会优先尝试浏览器实时识别；没有识别结果时走服务端 MiMo 转写或 mock fallback。
 
 更多配置见 [docs/ai-asr-provider-setup.md](docs/ai-asr-provider-setup.md)。
 
@@ -196,7 +182,7 @@ npm run eval:multimodal
 ## 当前限制
 
 - Xiaomi 音频理解当前用于真实转写能力验证；不同音频格式和噪声环境下的质量仍需继续评估。
-- 服务端 ASR 仍保留 OpenAI-compatible provider；需要配置真实 `ASR_API_KEY`、`ASR_BASE_URL` 和 `ASR_MODEL` 才会调用对应供应商。
+- 服务端 ASR 已统一到 Xiaomi MiMo 音频理解；需要配置按量付费 `MIMO_API_KEY` 或 `XIAOMI_API_KEY` 才会调用真实模型。
 - 日历联动、会员、评分、退出登录等仍是 MVP 占位交互。
 - 图片识别已拆分为独立 Xiaomi Vision Provider；如果 Xiaomi 调用失败，会回到手动确认图片文字的 fallback。
 - 当前是单用户本地 MVP，不包含账号体系、团队协作、云端同步或权限系统。
@@ -236,3 +222,4 @@ npm run start
 注意：当前 Vercel 部署适合个人自测与流程验证；项目仍使用 `data/records.json` 本地 JSON 文件存储，在 Serverless 生产环境中不保证长期持久化。
 
 如果使用自有服务器部署，优先参考 Docker Compose 或 PM2 + Nginx 方案。自有服务器可通过挂载 `data/` 目录保留 MVP JSON 数据，但仍建议定期备份并在长期使用前迁移到正式数据库。
+

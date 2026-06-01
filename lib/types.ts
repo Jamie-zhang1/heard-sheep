@@ -20,7 +20,7 @@ export type ConfirmationAnswer = {
 };
 
 export type AnalyzeMeta = {
-  provider: "deepseek" | "mimo" | "mock" | "mock_fallback";
+  provider: "mimo" | "mock" | "mock_fallback";
   model?: string;
   fallbackUsed: boolean;
   error?: string;
@@ -144,3 +144,4 @@ export type Mark = {
   label?: string;
   createdAt: string;
 };
+

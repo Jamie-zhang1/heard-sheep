@@ -1,33 +1,22 @@
 import { mockAsrProvider } from "./mock-provider";
-import { openAiCompatibleAsrProvider } from "./openai-compatible-provider";
 import { AsrProviderError, type TranscribeInput, type TranscribeResult } from "./provider";
 import { xiaomiAudioProvider } from "./xiaomi-audio-provider";
 
 export async function transcribeAudio(input: TranscribeInput): Promise<TranscribeResult> {
-  const provider = (process.env.ASR_PROVIDER || "mock").toLowerCase();
+  const configuredProvider = (process.env.ASR_PROVIDER || "xiaomi-audio").toLowerCase();
+  const provider = configuredProvider === "mock" ? "mock" : "xiaomi-audio";
   const allowFallback = process.env.ASR_ALLOW_MOCK_FALLBACK !== "false";
+
+  if (configuredProvider !== "xiaomi-audio" && configuredProvider !== "mock") {
+    console.warn(`[ASR] Unsupported/legacy ASR_PROVIDER=${configuredProvider}; using Xiaomi MiMo audio instead.`);
+  }
 
   try {
     if (provider === "mock") {
       return await mockAsrProvider.transcribe(input);
     }
 
-    if (provider === "openai" || provider === "openai-compatible" || provider === "whisper") {
-      return await openAiCompatibleAsrProvider.transcribe(input);
-    }
-
-    // "mimo-audio" is kept only as a legacy alias; new configs should use "xiaomi-audio".
-    if (provider === "xiaomi-audio" || provider === "mimo-audio" || provider === "xiaomi-mimo") {
-      return await xiaomiAudioProvider.transcribe(input);
-    }
-
-    // "browser" provider is handled client-side via createSpeechRecognition().
-    if (provider === "browser") {
-      console.warn("[ASR] 'browser' provider cannot run server-side, using mock");
-      return await mockAsrProvider.transcribe(input);
-    }
-
-    throw new AsrProviderError(`Unsupported ASR provider: ${provider}`, "ASR_PROVIDER_UNSUPPORTED");
+    return await xiaomiAudioProvider.transcribe(input);
   } catch (error) {
     if (!allowFallback || provider === "mock") {
       throw error;

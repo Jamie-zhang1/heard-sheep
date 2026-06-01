@@ -64,9 +64,9 @@ V0.6 同步引入新版小羊状态视觉体系，统一品牌形象与等待、
 - 录音、上传音频、粘贴转写稿、上传图片入口。
 - 浏览器录音，支持暂停、继续、结束、重点标记。
 - 浏览器 Web Speech API 实时识别尝试。
-- 服务端 `/api/transcribe` provider 架构，支持 Xiaomi MiMo 音频理解、OpenAI-compatible ASR provider 与 mock fallback。
+- 服务端 `/api/transcribe` provider 架构，统一使用 Xiaomi MiMo 音频理解，并保留 mock fallback。
 - `/api/vision/extract-text` provider 架构，支持 Xiaomi MiMo 图片理解，失败时回到手动确认图片文字。
-- `/api/analyze` provider 架构，默认使用 DeepSeek V4 Flash，保留 MiMo OpenAI-compatible API 与 mock fallback。
+- `/api/analyze` provider 架构，默认使用 Xiaomi MiMo v2.5-pro，保留 MiMo OpenAI-compatible API 与 mock fallback。
 - Zod 校验 AI 输出结构。
 - 结果页三 Tab，AI 生成任务默认进入候选区，不自动进入正式任务清单。
 - 任务详情与任务编辑。
@@ -154,11 +154,11 @@ V0.6 同步引入新版小羊状态视觉体系，统一品牌形象与等待、
 - 展示预览与文件名。
 - 调用 `/api/vision/extract-text` 自动提取图片文字。
 - 自动进入“确认图片文字”页并预填识别结果。
-- 用户确认或修改后，继续调用 DeepSeek 生成任务计划。
+- 用户确认或修改后，继续调用 Xiaomi MiMo 生成任务计划。
 
 限制：
 
-- DeepSeek V4 Flash 当前使用文本 Chat Completions，不直接读图；图片理解已拆给 Xiaomi Vision Provider。
+- Xiaomi MiMo v2.5-pro 当前使用文本 Chat Completions，不直接读图；图片理解已拆给 Xiaomi Vision Provider。
 - Xiaomi 图片理解失败时，前端会降级到“确认图片文字”流程，用户可粘贴/校对截图文字后继续生成任务。
 - mock 模式不会真实 OCR。
 
@@ -176,9 +176,9 @@ V0.6 同步引入新版小羊状态视觉体系，统一品牌形象与等待、
 已实现：
 
 - `/api/analyze` 接收 `raw_text`、`source`。
-- 默认 provider 为 DeepSeek V4 Flash。
-- 当前推荐模型为 `deepseek-v4-flash`。
-- 未配置 `DEEPSEEK_API_KEY` 或 provider 失败时可回退 mock。
+- 默认 provider 为 Xiaomi MiMo v2.5-pro。
+- 当前推荐模型为 `mimo-v2.5-pro`。
+- 未配置 `MIMO_API_KEY` 或 provider 失败时可回退 mock。
 - 使用 Zod 校验 AI 输出。
 - 真实模型输出 JSON 解析失败时会尝试一次修复请求。
 - 结果包含 `meta`，用于标记 provider、model、fallback 状态。
@@ -253,7 +253,7 @@ type AnalyzeResult = {
   global_confirm_questions: string[]
   warnings: string[]
   meta?: {
-    provider: "deepseek" | "mimo" | "mock" | "mock_fallback"
+    provider: "mimo" | "mock" | "mock_fallback"
     model?: string
     fallbackUsed: boolean
     error?: string
@@ -395,7 +395,7 @@ type CandidateTaskItem = Omit<TaskItem, "id"> & {
 首页 → 上传音频 → 开始转写 → 转写确认 → AI 分析 → 结果页
 ```
 
-状态：已实现；当前可配置 `ASR_PROVIDER=xiaomi-audio` 使用 Xiaomi MiMo 音频理解做真实转写验证，也保留 OpenAI-compatible ASR provider 与 mock fallback。
+状态：已实现；当前可配置 `ASR_PROVIDER=xiaomi-audio` 使用 Xiaomi MiMo 音频理解做真实转写验证；未配置按量付费 MiMo key 时使用 mock fallback。
 
 ### 粘贴转写稿流程
 
@@ -408,7 +408,7 @@ type CandidateTaskItem = Omit<TaskItem, "id"> & {
 ### 图片流程
 
 ```text
-首页 → 识别图片 → 上传图片 → Xiaomi 图片理解 → 确认图片文字 → DeepSeek AI 分析 → 结果页
+首页 → 识别图片 → 上传图片 → Xiaomi 图片理解 → 确认图片文字 → Xiaomi MiMo AI 分析 → 结果页
 ```
 
 状态：已实现；图片文字由 Xiaomi MiMo 自动提取并预填，识别失败时允许手动粘贴文字继续分析。
@@ -445,3 +445,4 @@ type CandidateTaskItem = Omit<TaskItem, "id"> & {
 
 - `docs/手机自测版部署指南_v0.6.md`
 - `docs/手机端真机验收清单_v0.6.md`
+
