@@ -9,18 +9,18 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        paper: "#FAF8F5",
-        ink: "#1A1916",
-        muted: "#9C9489",
-        line: "#E8E4DF",
-        brand: "#7C6FF7",
-        "brand-light": "#EEE9FF",
-        "surface-2": "#F0EDE8",
-        "ink-2": "#5C574F",
-        "tag-green": "#E8F7EE",
-        "tag-amber": "#FEF3E2",
+        paper: "#FFFFFF",
+        ink: "#201D18",
+        muted: "#929292",
+        line: "#ECECEC",
+        brand: "#171717",
+        "brand-light": "#EEEEEC",
+        "surface-2": "#F7F7F7",
+        "ink-2": "#5F5F5F",
+        "tag-green": "#EEEEEC",
+        "tag-amber": "#F2F2F0",
         "tag-red": "#FDECEA",
-        "tag-blue": "#E8F1FD"
+        "tag-blue": "#EEEEEC"
       },
       fontFamily: {
         sans: [
@@ -33,10 +33,10 @@ const config: Config = {
         ]
       },
       boxShadow: {
-        sheep: "0 18px 40px rgba(26,25,22,0.10)",
-        card: "0 2px 12px rgba(26,25,22,0.06)",
-        btn: "0 4px 20px rgba(124,111,247,0.28)",
-        record: "0 8px 40px rgba(124,111,247,0.35)"
+        sheep: "0 18px 40px rgba(88,58,18,0.12)",
+        card: "0 8px 28px rgba(88,58,18,0.07)",
+        btn: "0 8px 22px rgba(0,0,0,0.18)",
+        record: "0 12px 30px rgba(0,0,0,0.22)"
       }
     }
   },

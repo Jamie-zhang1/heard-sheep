@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Download, Share2, X } from "lucide-react";
-import { SheepVisual } from "./SheepVisual";
+import { BrandMark } from "./BrandMark";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -95,7 +95,7 @@ export function PwaInstallPrompt() {
     <section className="mb-5 rounded-2xl border border-brand-light bg-white p-4 shadow-card">
       <div className="flex items-start gap-3">
         <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-light text-brand">
-          <SheepVisual variant="cheer" size="sm" decorative motion="bounce" />
+          <BrandMark size="sm" tone="light" />
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">

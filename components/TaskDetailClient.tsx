@@ -100,7 +100,7 @@ export function TaskDetailClient({ initialRecord, initialTask }: { initialRecord
               <button
                 type="button"
                 onClick={() => document.getElementById("confirm")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                className="inline-flex !h-6 !min-h-6 !min-w-0 items-center justify-center gap-0.5 whitespace-nowrap rounded-full bg-tag-blue px-2.5 text-[11px] font-semibold leading-none text-[#1D6FB8] transition active:scale-[0.98]"
+                className="inline-flex !h-6 !min-h-6 !min-w-0 items-center justify-center gap-0.5 whitespace-nowrap rounded-full bg-tag-blue px-2.5 text-[11px] font-semibold leading-none text-[#444444] transition active:scale-[0.98]"
               >
                 去确认{confirmationIssueCount(task) ? ` ${confirmationIssueCount(task)}项` : ""}
                 <ChevronRight size={12} />
@@ -145,7 +145,7 @@ export function TaskDetailClient({ initialRecord, initialTask }: { initialRecord
             onClick={() => patchTask({ status: task.status === "done" ? "todo" : "done" })}
             className="flex w-full gap-3 rounded-2xl bg-white p-3.5 text-left shadow-card transition active:scale-[0.99]"
           >
-            <span className={`mt-0.5 flex h-[20px] w-[20px] shrink-0 items-center justify-center rounded-full border-2 ${task.status === "done" ? "border-[#16A34A] bg-[#16A34A] text-white" : "border-line"}`}>
+            <span className={`mt-0.5 flex h-[20px] w-[20px] shrink-0 items-center justify-center rounded-full border-2 ${task.status === "done" ? "border-[#171717] bg-[#171717] text-white" : "border-line"}`}>
               {task.status === "done" && <Check size={12} />}
             </span>
             <span>
@@ -267,7 +267,7 @@ export function TaskDetailClient({ initialRecord, initialTask }: { initialRecord
                     onToggle={(id) => setForm({ ...form, labels: toggleLabel(form.labels, id) })}
                   />
                   <LabelGroup
-                    title="小羊"
+                    title="状态"
                     ids={labelsByType("system").map((label) => label.id)}
                     selected={form.labels}
                     onToggle={(id) => setForm({ ...form, labels: toggleLabel(form.labels, id) })}

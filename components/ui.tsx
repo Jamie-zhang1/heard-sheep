@@ -4,7 +4,7 @@ import { ChevronRight, Trash2, X } from "lucide-react";
 import { formatDateTime, priorityLabel, statusLabel } from "@/lib/format";
 import { getTaskLabel, getTaskLabelName, primaryLabelId } from "@/lib/labels";
 import type { RecordItem, TaskItem } from "@/lib/types";
-import { SheepVisual } from "./SheepVisual";
+import { BrandMark } from "./BrandMark";
 
 type PillTone = "dark" | "light" | "outline" | "muted";
 
@@ -139,7 +139,7 @@ export function Pill({
       className={clsx(
         "inline-flex h-6 items-center justify-center whitespace-nowrap rounded-full px-2.5 text-[11px] font-semibold leading-none tracking-[0.01em]",
         tone === "dark" && "bg-brand-light text-brand",
-        tone === "light" && "bg-tag-blue text-[#1D6FB8]",
+        tone === "light" && "bg-tag-blue text-[#444444]",
         tone === "outline" && "bg-surface-2 text-ink-2",
         tone === "muted" && "bg-surface-2 text-muted",
         className
@@ -167,7 +167,7 @@ export function LabelPill({
 
   const content = (
     <>
-      {isSystem && <SheepVisual variant={id === "sheep_done" ? "cheer" : id === "sheep_warn" ? "question" : "mascot"} size="xs" className="shrink-0" decorative motion="none" />}
+      {isSystem && <BrandMark tone={id === "sheep_done" ? "success" : id === "sheep_warn" ? "warning" : "light"} size="xs" className="shrink-0" />}
       <span>{getTaskLabelName(id)}</span>
     </>
   );
@@ -221,10 +221,10 @@ export function SectionTitle({ title, action }: { title: string; action?: React.
 export function PriorityBadge({ priority }: { priority: TaskItem["priority"] }) {
   const tone =
     priority === "high"
-      ? "bg-tag-red text-[#DC2626]"
+      ? "bg-[#e8e8e6] text-[#171717]"
       : priority === "medium"
-        ? "bg-tag-amber text-[#D97706]"
-        : "bg-tag-green text-[#16A34A]";
+        ? "bg-[#f0f0ee] text-[#4f4f4f]"
+        : "bg-[#f5f5f3] text-[#707070]";
   return (
     <Pill tone="outline" className={tone}>
       {priorityLabel(priority)}优先级
@@ -235,10 +235,10 @@ export function PriorityBadge({ priority }: { priority: TaskItem["priority"] }) 
 export function StatusBadge({ status }: { status: TaskItem["status"] }) {
   const tone =
     status === "done"
-      ? "bg-tag-green text-[#16A34A]"
+      ? "bg-[#e8e8e6] text-[#171717]"
       : status === "doing"
         ? "bg-brand-light text-brand"
-        : "bg-tag-amber text-[#B45309]";
+        : "bg-[#f2f2f0] text-[#555555]";
   return (
     <Pill tone="outline" className={tone}>
       {statusLabel(status)}
@@ -365,7 +365,7 @@ function CheckMarkIcon() {
 export function EmptyState({ title, description }: { title: string; description: string }) {
   return (
     <div className="mx-6 my-8 rounded-2xl border border-dashed border-line bg-white p-6 text-center shadow-card">
-      <SheepVisual variant="empty" size="md" className="mx-auto mb-3 opacity-95" motion="soft" />
+      <BrandMark size="md" tone="muted" className="mx-auto mb-3" />
       <div className="text-sm font-bold">{title}</div>
       <p className="mt-2 text-xs leading-5 text-muted">{description}</p>
     </div>

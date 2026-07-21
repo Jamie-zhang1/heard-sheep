@@ -431,7 +431,7 @@ export function ResultView({ record }: { record: RecordItem }) {
                         <div className="mt-1 text-[11px] text-muted">{task.priorityReason || "按依赖和截止时间排序。"}</div>
                       </div>
                       {task.candidateStatus === "added" && (
-                        <span className="shrink-0 rounded-full bg-tag-green px-2 py-1 text-[10px] font-bold text-[#16A34A]">
+                        <span className="shrink-0 rounded-full bg-tag-green px-2 py-1 text-[10px] font-bold text-[#333333]">
                           已加入
                         </span>
                       )}
@@ -595,7 +595,7 @@ export function ResultView({ record }: { record: RecordItem }) {
                     onToggle={(id) => setForm({ ...form, labels: toggleLabel(form.labels, id) })}
                   />
                   <LabelGroup
-                    title="小羊"
+                    title="状态"
                     ids={labelsByType("system").map((label) => label.id)}
                     selected={form.labels}
                     onToggle={(id) => setForm({ ...form, labels: toggleLabel(form.labels, id) })}
@@ -692,7 +692,7 @@ function CandidateTaskCard({
             <h3 className="min-w-0 flex-1 text-[16px] font-black leading-snug text-ink">{candidate.title}</h3>
             <span
               className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold ${
-                added ? "bg-tag-green text-[#16A34A]" : "bg-brand-light text-brand"
+                added ? "bg-tag-green text-[#333333]" : "bg-brand-light text-brand"
               }`}
             >
               {added ? "已加入" : "候选"}

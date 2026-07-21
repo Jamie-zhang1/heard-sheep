@@ -21,12 +21,13 @@
 
 ## 当前状态
 
-- UI：移动端优先，375px 手机容器，小羊品牌视觉，奶油紫 + 黑白轻工具风。
+- UI：移动端优先，390px 手机容器，白底与中性浅灰卡片，炭黑主操作与抽象“声波—行动”品牌标记。
 - 转写：浏览器端优先尝试 Web Speech API；服务端 `/api/transcribe` 已统一使用 Xiaomi MiMo 音频理解，并保留 mock fallback。
 - AI：`/api/analyze` 默认使用 Xiaomi MiMo OpenAI-compatible Chat Completions；文本任务分析使用 `mimo-v2.5-pro`，未配置密钥或调用失败时可回退到 mock AI。
 - 图片：`/api/vision/extract-text` 已支持 Xiaomi MiMo 图片理解，上传图片后会自动提取文字并预填“确认图片文字”页；失败时仍可手动粘贴。
 - 存储：本地 JSON 文件 `data/records.json`，适合 MVP 演示和本地开发。
 - 部署路径：默认启用 `basePath=/sheep`，本地访问地址为 `/sheep`。
+- 线上地址：[https://heard-sheep.cloud/sheep](https://heard-sheep.cloud/sheep)（自有服务器，Docker + Nginx，端口 3003）。
 
 ## 功能清单
 
@@ -198,26 +199,27 @@ npm run start
 
 ## 品牌视觉
 
-项目使用原创小羊 mascot 作为品牌识别，并在 v0.6 建立了等待、成功、错误、空状态、鼓励等状态的统一视觉资产映射。页面内的小羊图片应优先通过 `SheepVisual` 和 `lib/sheep-assets.ts` 使用，避免直接硬编码素材路径。
+v0.7 使用黑白灰工具型视觉：手机界面以纯白与中性浅灰为基础，主按钮、选中导航和关键操作使用炭黑；原小羊 mascot 已退出所有运行时界面。品牌标记改为抽象“声波—行动”图形，并统一用于首页、状态反馈、PWA 图标与安装入口。
 
-参考：[小羊视觉资产使用说明 v0.6](docs/小羊视觉资产使用说明_v0.6.md)
+参考：[黑白视觉系统说明 v0.7](docs/黑白视觉系统说明_v0.7.md)
+
 ## 手机端自测版 / PWA
 
-项目已进入 V0.6 手机端自测阶段，可部署为公网 HTTPS 下的可安装 PWA。默认访问路径仍为 `/sheep`，根路径 `/` 会重定向到 `/sheep`。
+项目已进入 V0.7 手机端自测阶段，可部署为公网 HTTPS 下的可安装 PWA。默认访问路径仍为 `/sheep`，根路径 `/` 会重定向到 `/sheep`。
 
 已补齐：
 
 - Manifest：应用名、描述、主题色、`start_url=/sheep`、`scope=/sheep/`。
-- PWA 图标：新版小羊 favicon、Apple touch icon、192/512/maskable icons。
+- PWA 图标：黑白“声波—行动”SVG 图标，供 favicon、Apple touch icon 与可安装 PWA 使用。
 - Service Worker：静态资源最小缓存，`/sheep/api/*` 不缓存。
 - 安装入口：首页 / 我的页提供“安装到手机”引导。
 - 手机适配：底部安全区、弹层安全区、输入框键盘遮挡、触控目标、录音 MIME 兼容。
 
 部署与真机测试请参考：
 
-- [手机自测版部署指南 v0.6](docs/手机自测版部署指南_v0.6.md)
-- [自有服务器部署指南 v0.6](docs/自有服务器部署指南_v0.6.md)
-- [手机端真机验收清单 v0.6](docs/手机端真机验收清单_v0.6.md)
+- [手机自测版部署指南 v0.7](docs/手机自测版部署指南_v0.6.md)
+- [自有服务器部署指南 v0.7](docs/自有服务器部署指南_v0.6.md)
+- [手机端真机验收清单 v0.7](docs/手机端真机验收清单_v0.6.md)
 
 注意：当前 Vercel 部署适合个人自测与流程验证；项目仍使用 `data/records.json` 本地 JSON 文件存储，在 Serverless 生产环境中不保证长期持久化。
 

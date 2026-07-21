@@ -13,7 +13,7 @@ const items: Array<{ key: NavKey; label: string; href: string; icon: typeof Home
 
 export function BottomNav({ active }: { active: NavKey }) {
   return (
-    <nav className="safe-bottom-nav relative z-10 flex shrink-0 border-t border-line bg-white px-0 pt-2 shadow-[0_-8px_24px_rgba(26,25,22,0.04)]">
+    <nav className="safe-bottom-nav relative z-10 flex shrink-0 border-t border-line/80 bg-white/95 px-2 pt-2 shadow-[0_-10px_30px_rgba(95,70,26,0.05)] backdrop-blur-xl">
       {items.map((item) => {
         const Icon = item.icon;
         const isActive = active === item.key;
@@ -22,11 +22,13 @@ export function BottomNav({ active }: { active: NavKey }) {
             key={item.key}
             href={item.href}
             className={clsx(
-              "flex flex-1 flex-col items-center justify-center gap-1 text-[10px] font-medium tracking-[0.02em] transition active:scale-[0.98]",
+              "group flex flex-1 flex-col items-center justify-center gap-1 text-[10px] font-medium tracking-[0.02em] transition active:scale-[0.98]",
               isActive ? "text-brand" : "text-muted"
             )}
           >
-            <Icon size={22} strokeWidth={isActive ? 2.5 : 1.6} />
+            <span className={clsx("flex h-8 min-h-0 w-12 min-w-0 items-center justify-center rounded-xl transition", isActive && "bg-brand-light")}>
+              <Icon size={20} strokeWidth={isActive ? 2.4 : 1.7} />
+            </span>
             <span className={clsx(isActive && "font-semibold")}>{item.label}</span>
           </Link>
         );

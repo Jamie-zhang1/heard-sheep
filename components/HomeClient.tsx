@@ -15,7 +15,7 @@ import {
   X
 } from "lucide-react";
 import { PwaInstallPrompt } from "./PwaInstallPrompt";
-import { SheepVisual } from "./SheepVisual";
+import { BrandMark } from "./BrandMark";
 import { CloseButton, DeleteConfirmSheet, EmptyState, RecordRow, SectionTitle, SelectionToolbar } from "./ui";
 import { formatBytes, formatDuration } from "@/lib/format";
 import { MAX_AUDIO_BYTES, MAX_RECORDING_SECONDS, formatDurationLimit } from "@/lib/asr/limits";
@@ -144,6 +144,11 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
   }, [records]);
 
   const recentRecords = useMemo(() => recordItems.slice(0, 3), [recordItems]);
+  const dashboardTasks = useMemo(() => recordItems.flatMap((record) => record.tasks), [recordItems]);
+  const pendingTaskCount = dashboardTasks.filter((task) => task.status !== "done").length;
+  const confirmTaskCount = dashboardTasks.filter(
+    (task) => task.needConfirm && task.status !== "done"
+  ).length;
   const selectedRecentVisibleIds = selectedRecentIds.filter((id) => recentRecords.some((record) => record.id === id));
   const allRecentSelected = recentRecords.length > 0 && selectedRecentVisibleIds.length === recentRecords.length;
 
@@ -638,71 +643,88 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
 
   return (
     <>
-      <div className="safe-scroll px-5 pb-3">
-        <header className="relative mb-5 overflow-hidden px-0 pb-4 pt-2">
-          <div className="mb-5 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-light">
-                <SheepVisual variant="mascot" size="sm" decorative />
-              </div>
-              <div>
-                <h1 className="text-base font-bold tracking-tight text-ink">听到了咩</h1>
-                <p className="text-[10px] text-muted">AI 语音任务助手</p>
-              </div>
-            </div>
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-2 text-brand">
-              <CheckCircle2 size={16} />
+      <div className="safe-scroll px-5 pb-4">
+        <header className="-mx-5 mb-4 flex items-center justify-between border-b border-line bg-white px-5 pb-4 pt-1">
+          <div className="flex items-center gap-2.5">
+            <BrandMark size="sm" label="听到了咩" />
+            <div>
+              <h1 className="text-[15px] font-bold tracking-tight text-ink">听到了咩</h1>
+              <p className="text-[10px] font-medium tracking-[0.08em] text-muted">VOICE TO ACTION</p>
             </div>
           </div>
-          <h2 className="text-[22px] font-bold leading-tight text-ink">下午好，Jamie</h2>
-          <p className="mt-1 text-sm leading-6 text-muted">
-            让每一句交代，都落成清晰行动
-          </p>
+          <button
+            type="button"
+            onClick={() => router.push("/tasks")}
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-line bg-white text-brand shadow-card transition active:scale-95"
+            aria-label="查看任务"
+          >
+            <CheckCircle2 size={18} />
+          </button>
         </header>
 
-        <div className="mb-6 flex flex-col items-center py-5">
-          <div className="relative mb-4 flex items-center justify-center">
-            <div className="absolute h-[122px] w-[122px] rounded-full bg-brand opacity-20 shadow-record" />
-            <div className="absolute h-[102px] w-[102px] rounded-full bg-brand opacity-10" />
+        <section className="dashboard-hero mb-4 overflow-hidden rounded-[24px] border border-line bg-white p-4 shadow-card">
+          <div className="relative z-10">
+            <span className="inline-flex h-6 items-center rounded-full bg-white px-2.5 text-[10px] font-bold tracking-[0.08em] text-brand shadow-sm">
+              今日工作台
+            </span>
+            <h2 className="mt-3 text-[22px] font-bold leading-tight tracking-[-0.02em] text-ink">下午好，Jamie</h2>
+            <p className="mt-1 text-xs leading-5 text-ink-2">把口头交代、语音和截图，整理成下一步行动。</p>
+            <div className="mt-4 grid grid-cols-3 gap-2">
+              <div className="metric-card">
+                <strong>{recordItems.length}</strong>
+                <span>分析记录</span>
+              </div>
+              <div className="metric-card">
+                <strong>{pendingTaskCount}</strong>
+                <span>待办任务</span>
+              </div>
+              <div className="metric-card">
+                <strong>{confirmTaskCount}</strong>
+                <span>待确认</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="mb-5 rounded-[24px] bg-white p-4 shadow-card">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-bold text-ink">快速记录</h2>
+              <p className="mt-0.5 text-[11px] text-muted">说完即可自动转写和拆解</p>
+            </div>
+            <span className="rounded-full bg-tag-green px-2.5 py-1 text-[10px] font-bold text-[#444444]">AI 整理</span>
+          </div>
+
           <button
             onClick={startRecording}
-              className="relative flex h-[82px] w-[82px] items-center justify-center rounded-full bg-gradient-to-br from-[#8B7FF8] to-brand text-white shadow-record transition active:scale-95"
+            className="record-action group flex w-full items-center gap-4 rounded-[20px] border border-line bg-[#FAFAFA] p-3.5 text-left transition active:scale-[0.99]"
             aria-label="开始录音"
           >
-              <Mic size={30} strokeWidth={1.8} />
+            <span className="record-action-icon flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-brand text-white shadow-record">
+              <Mic size={25} strokeWidth={1.9} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <strong className="block text-[15px] font-bold text-ink">开始一段语音</strong>
+              <span className="mt-1 block text-[11px] leading-5 text-muted">适合会议、临时交代与现场沟通</span>
+            </span>
+            <span className="text-xl text-brand">›</span>
           </button>
-          </div>
-          <div className="text-center text-sm font-semibold text-ink">
-            点击开始录音
-          </div>
-          <div className="mt-0.5 text-center text-xs text-muted">
-            记录口头交代，自动拆解任务
-          </div>
-        </div>
 
-        <div className="mb-6 grid grid-cols-3 justify-center gap-3">
-          <button
-            onClick={() => setOverlay("upload")}
-            className="flex flex-col items-center justify-center gap-1.5 rounded-2xl bg-white px-4 py-3 text-xs font-semibold text-ink-2 shadow-card active:scale-[0.99]"
-          >
-            <Upload size={16} />
-            上传音频
-          </button>
-          <button
-            onClick={() => setOverlay("paste")}
-            className="flex flex-col items-center justify-center gap-1.5 rounded-2xl bg-white px-4 py-3 text-xs font-semibold text-ink-2 shadow-card active:scale-[0.99]"
-          >
-            <FileText size={16} />
-            粘贴转写稿
-          </button>
-          <button
-            onClick={() => setOverlay("image")}
-            className="flex flex-col items-center justify-center gap-1.5 rounded-2xl bg-white px-4 py-3 text-xs font-semibold text-ink-2 shadow-card active:scale-[0.99]"
-          >
-            <Image size={16} />
-            识别图片
-          </button>
-        </div>
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            <button onClick={() => setOverlay("upload")} className="quick-action">
+              <Upload size={17} />
+              <span>上传音频</span>
+            </button>
+            <button onClick={() => setOverlay("paste")} className="quick-action">
+              <FileText size={17} />
+              <span>粘贴文本</span>
+            </button>
+            <button onClick={() => setOverlay("image")} className="quick-action">
+              <Image size={17} />
+              <span>识别图片</span>
+            </button>
+          </div>
+        </section>
 
         <PwaInstallPrompt />
 
@@ -1199,7 +1221,7 @@ export function HomeClient({ records }: { records: RecordItem[] }) {
 
 function FullOverlay({ children, dark = false }: { children: React.ReactNode; dark?: boolean }) {
   return (
-    <div className={`mobile-overlay absolute inset-0 z-30 flex flex-col overflow-hidden rounded-[30px] ${dark ? "bg-gradient-to-br from-ink to-[#322b66] text-white" : "bg-paper text-ink"}`}>
+    <div className={`mobile-overlay absolute inset-0 z-30 flex flex-col overflow-hidden rounded-[30px] ${dark ? "bg-gradient-to-br from-ink to-[#4b3218] text-white" : "bg-paper text-ink"}`}>
       {children}
     </div>
   );
@@ -1229,7 +1251,7 @@ function ProcessingOverlay({
   return (
     <FullOverlay>
       <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
-        <SheepVisual variant="thinking" size="lg" className="mb-6 processing-dot" motion="thinking" />
+        <BrandMark size="lg" tone="light" className="mb-6 processing-dot" />
         <div className="text-base font-bold">{title}</div>
         <div className="mb-6 mt-2 text-[13px] text-muted">{subtitle}</div>
         <div className="mb-4 w-full max-w-[280px] overflow-hidden rounded-full bg-surface-2">
@@ -1277,7 +1299,7 @@ function ErrorOverlay({
   return (
     <FullOverlay>
       <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
-        <SheepVisual variant={icon === "ok" ? "success" : icon === "mic" ? "question" : "error"} size="lg" className="mb-5" motion={icon === "ok" ? "bounce" : "soft"} />
+        <BrandMark size="lg" tone={icon === "ok" ? "success" : icon === "warn" ? "warning" : "muted"} className="mb-5" />
         <div className="text-base font-bold">{title}</div>
         <p className="mb-6 mt-2 max-w-[280px] text-[13px] leading-6 text-muted">{description}</p>
         <div className="w-full max-w-[260px] space-y-2">

@@ -1,20 +1,9 @@
-const CACHE_NAME = "heard-sheep-static-v0.6.2";
+const CACHE_NAME = "heard-sheep-static-v0.7.0";
 const APP_BASE_PATH = "/sheep";
 
 const PRECACHE_URLS = [
   `${APP_BASE_PATH}/manifest.json`,
-  `${APP_BASE_PATH}/favicon.ico`,
-  `${APP_BASE_PATH}/favicon.png`,
-  `${APP_BASE_PATH}/favicon-16x16.png`,
-  `${APP_BASE_PATH}/favicon-32x32.png`,
-  `${APP_BASE_PATH}/apple-touch-icon.png`,
-  `${APP_BASE_PATH}/icons/icon-192.png`,
-  `${APP_BASE_PATH}/icons/icon-512.png`,
-  `${APP_BASE_PATH}/icons/icon-maskable-192.png`,
-  `${APP_BASE_PATH}/icons/icon-maskable-512.png`,
-  `${APP_BASE_PATH}/brand/sheep/mascot/sheep-mascot-main.png`,
-  `${APP_BASE_PATH}/brand/sheep/ui/sheep-thinking.png`,
-  `${APP_BASE_PATH}/brand/sheep/ui/sheep-question.png`,
+  `${APP_BASE_PATH}/brand/app-icon.svg`,
 ];
 
 self.addEventListener("install", (event) => {
@@ -52,12 +41,7 @@ self.addEventListener("fetch", (event) => {
     url.pathname.includes("/_next/static/") ||
     url.pathname.startsWith(`${APP_BASE_PATH}/icons/`) ||
     url.pathname.startsWith(`${APP_BASE_PATH}/brand/`) ||
-    url.pathname === `${APP_BASE_PATH}/manifest.json` ||
-    url.pathname.endsWith("/favicon.ico") ||
-    url.pathname.endsWith("/favicon.png") ||
-    url.pathname.endsWith("/favicon-16x16.png") ||
-    url.pathname.endsWith("/favicon-32x32.png") ||
-    url.pathname.endsWith("/apple-touch-icon.png");
+    url.pathname === `${APP_BASE_PATH}/manifest.json`;
 
   if (!cacheableStatic) return;
 
