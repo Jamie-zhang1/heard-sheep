@@ -27,6 +27,7 @@
 - 图片：`/api/vision/extract-text` 已支持 Xiaomi MiMo 图片理解，上传图片后会自动提取文字并预填“确认图片文字”页；失败时仍可手动粘贴。
 - 存储：本地 JSON 文件 `data/records.json`，适合 MVP 演示和本地开发。
 - 部署路径：默认启用 `basePath=/sheep`，本地访问地址为 `/sheep`。
+- 线上地址：[https://heard-sheep.cloud/sheep](https://heard-sheep.cloud/sheep)（自有服务器，Docker + Nginx，端口 3003）。
 
 ## 功能清单
 
