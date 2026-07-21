@@ -14,10 +14,10 @@ export const TASK_LABELS: TaskLabel[] = [
   { id: "client", name: "客户需求", type: "scenario" },
   { id: "data", name: "数据分析", type: "scenario" },
   { id: "urgent", name: "紧急", type: "scenario" },
-  { id: "sheep_record", name: "听到咩", type: "system" },
-  { id: "sheep_think", name: "想清咩", type: "system" },
-  { id: "sheep_done", name: "完成咩", type: "system" },
-  { id: "sheep_warn", name: "确认咩", type: "system" }
+  { id: "sheep_record", name: "已记录", type: "system" },
+  { id: "sheep_think", name: "处理中", type: "system" },
+  { id: "sheep_done", name: "已完成", type: "system" },
+  { id: "sheep_warn", name: "待确认", type: "system" }
 ];
 
 export const SOURCE_LABEL_MAP: Record<SourceType, string> = {

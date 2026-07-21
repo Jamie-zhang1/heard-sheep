@@ -1,6 +1,5 @@
 import clsx from "clsx";
 import { BottomNav } from "./BottomNav";
-import { SheepVisual } from "./SheepVisual";
 
 type PhoneShellProps = {
   active?: "home" | "tasks" | "history" | "me";
@@ -12,28 +11,7 @@ type PhoneShellProps = {
 export function PhoneShell({ active = "home", children, hideNav = false, dark = false }: PhoneShellProps) {
   return (
     <main className={clsx("phone-frame", dark && "phone-frame-dark")}>
-      <div className="sheep-wallpaper" aria-hidden="true" />
-      <div className="sheep-orbit sheep-orbit-a">
-        <SheepVisual variant="floating" decorative motion="float" />
-      </div>
-      <div className="sheep-orbit sheep-orbit-b">
-        <SheepVisual variant="floating" decorative motion="float" />
-      </div>
-      <div className="sheep-orbit sheep-orbit-c">
-        <SheepVisual variant="floating" decorative motion="float" />
-      </div>
-      <div className="sheep-orbit sheep-orbit-d">
-        <SheepVisual variant="floating" decorative motion="float" />
-      </div>
-      <div className="sheep-bg sheep-bg-a -right-3 top-[8%] w-20">
-        <SheepVisual variant="floating" decorative motion="float" />
-      </div>
-      <div className="sheep-bg sheep-bg-b -left-3 bottom-[26%] w-16">
-        <SheepVisual variant="floating" decorative motion="float" />
-      </div>
-      <div className="sheep-bg sheep-bg-c right-10 top-[57%] w-14">
-        <SheepVisual variant="empty" decorative motion="soft" />
-      </div>
+      <div className="app-ambient" aria-hidden="true" />
       <StatusBar />
       <section className="relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden">{children}</section>
       {!hideNav && <BottomNav active={active} />}
@@ -43,11 +21,21 @@ export function PhoneShell({ active = "home", children, hideNav = false, dark = 
 
 export function StatusBar() {
   return (
-    <div className="relative z-10 flex h-[54px] shrink-0 items-center justify-between px-7 pt-4 text-[15px] font-bold">
+    <div className="relative z-10 flex h-[52px] shrink-0 items-center justify-between px-7 pt-3 text-[14px] font-bold">
       <span>9:41</span>
-      <div className="flex items-center gap-1">
-        <span className="text-xs">5G</span>
-        <span className="text-xs">100%</span>
+      <div className="flex items-center gap-1.5" aria-hidden="true">
+        <span className="flex h-3 items-end gap-[2px]">
+          <i className="h-1 w-[3px] rounded-sm bg-current" />
+          <i className="h-2 w-[3px] rounded-sm bg-current" />
+          <i className="h-3 w-[3px] rounded-sm bg-current" />
+        </span>
+        <svg viewBox="0 0 20 14" className="h-3.5 w-5" fill="none">
+          <path d="M2 5.2A12.5 12.5 0 0 1 18 5.2M5.2 8.4a7.8 7.8 0 0 1 9.6 0M8.4 11.4a2.8 2.8 0 0 1 3.2 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+        <span className="relative h-3 w-6 rounded-[3px] border border-current p-[1px]">
+          <i className="block h-full w-[88%] rounded-[1px] bg-current" />
+          <i className="absolute -right-[3px] top-[3px] h-1 w-[2px] rounded-r bg-current" />
+        </span>
       </div>
     </div>
   );

@@ -21,7 +21,7 @@ import {
   type LucideIcon
 } from "lucide-react";
 import { PWA_INSTALL_DISMISSED_KEY, PWA_INSTALL_REQUEST_EVENT, PwaInstallPrompt } from "./PwaInstallPrompt";
-import { SheepVisual } from "./SheepVisual";
+import { BrandMark } from "./BrandMark";
 import { CloseButton } from "./ui";
 import { apiPath } from "@/lib/api-path";
 import type { RecordItem } from "@/lib/types";
@@ -146,14 +146,14 @@ export function MeClient({ initialRecords }: { initialRecords: RecordItem[] }) {
   return (
     <>
       <main className="safe-scroll px-5 pb-5">
-        <section className="relative mb-5 mt-2 flex flex-col items-center overflow-hidden rounded-3xl border border-brand-light bg-gradient-to-br from-brand-light/50 to-white px-6 pb-5 pt-7 shadow-card">
+        <section className="relative mb-5 mt-2 flex flex-col items-center overflow-hidden rounded-3xl border border-line bg-white px-6 pb-5 pt-7 shadow-card">
           <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-brand/10" />
-          <div className="relative mb-3 drop-shadow-[0_8px_18px_rgba(124,111,247,0.15)]">
-            <SheepVisual variant="mascot" size="lg" decorative />
+          <div className="relative mb-3">
+            <BrandMark size="lg" label="听到了咩" />
           </div>
-          <div className="text-lg font-bold text-ink">职场小羊</div>
+          <div className="text-lg font-bold text-ink">Jamie 的任务工作台</div>
           <div className="mt-1 text-[13px] text-muted">已使用 听到了咩 {activeDays} 天</div>
-          <div className="mt-3 inline-flex h-7 items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-[#F59E0B] to-[#D97706] px-3.5 text-xs font-bold text-white shadow-btn">
+          <div className="mt-3 inline-flex h-7 items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-[#171717] to-[#4A4A4A] px-3.5 text-xs font-bold text-white shadow-btn">
             <Star size={12} fill="currentColor" />
             Pro 会员 · MVP 占位
           </div>
@@ -203,7 +203,7 @@ export function MeClient({ initialRecords }: { initialRecords: RecordItem[] }) {
 
       {toast && (
         <div className="absolute bottom-[calc(92px+var(--safe-bottom))] left-1/2 z-50 inline-flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full bg-ink px-4 py-2 text-xs font-bold text-white shadow-sheep">
-          <SheepVisual variant="success" size="xs" decorative motion="none" />
+          <BrandMark size="xs" tone="success" />
           {toast}
         </div>
       )}
@@ -328,9 +328,7 @@ export function MeClient({ initialRecords }: { initialRecords: RecordItem[] }) {
             {sheet === "install" && (
               <SheetBody title="安装到手机" onClose={() => setSheet("none")}>
                 <div className="rounded-2xl border border-brand-light bg-brand-light/50 p-4 text-center">
-                  <div className="mx-auto mb-2 flex h-16 w-16 items-center justify-center rounded-3xl bg-white shadow-card">
-                    <SheepVisual variant="cheer" size="md" decorative motion="bounce" />
-                  </div>
+                  <BrandMark size="md" className="mx-auto mb-2" />
                   <div className="text-sm font-black text-ink">把《听到了咩》放到主屏幕</div>
                   <p className="mt-1 text-xs leading-5 text-muted">
                     Android Chrome 支持时可直接触发安装；iPhone Safari 请点击分享按钮，再选择“添加到主屏幕”。
@@ -425,7 +423,7 @@ export function MeClient({ initialRecords }: { initialRecords: RecordItem[] }) {
               <SheetBody title="给我们评分" onClose={() => setSheet("none")}>
                 <div className="rounded-2xl border border-line bg-white p-4 text-center shadow-card">
                   <div className="mb-2 text-2xl">★★★★★</div>
-                  <p className="text-sm font-bold text-ink">你觉得这只小羊有帮上忙吗？</p>
+                  <p className="text-sm font-bold text-ink">这次任务整理有帮上忙吗？</p>
                   <p className="mt-1 text-xs leading-5 text-muted">评分入口先做本地反馈，正式版会接入真实反馈系统。</p>
                 </div>
                 <button
